@@ -1,0 +1,146 @@
+env:
+  variables:
+    OUTPUT_PATH: batch_01
+    SCRIPTS: $(MERLIN_INFO)/scripts
+    SAMPLE_FILE: $(MERLIN_INFO)/samples.npy
+    
+    SHELTER_START: 10
+    NR_OF_DAYS: 21
+    P_TRANS: "[0.2,0.35,0.5]"
+    COMPLIANCE: "[0.8,0.95]"
+
+    CENSUS_FILENAME: "/global/homes/k/keilbart/git/ExaEpi/data/CensusData/BayArea.dat"
+    WORKERFLOW_FILENAME: "/global/homes/k/keilbart/git/ExaEpi/data/CensusData/BayArea-wf.bin"
+    CASE_FILENAME: "/global/homes/k/keilbart/git/ExaEpi/data/CaseData/July4.cases"
+
+
+    EXECUTABLE: /global/homes/k/keilbart/git/ExaEpi/build/bin/agent
+    SIM_NODES: 1
+    SIM_PROCS: 1
+    REGION: BayArea
+
+description:
+  name: Sensitivity_Analysis
+  description: Sensitivity analysis study to understand the input parameters of epicast
+
+batch:
+  type: flux
+  flux_path: /global/u2/k/keilbart/git/Perlmutter/spack/opt/spack/linux-sles15-zen3/gcc-11.2.0/flux-core-0.49.0-zvwbgtouotpvr4lptn2byfqanvw2bd3x/bin
+  bank: m3623_g
+  executable: /global/homes/k/keilbart/git/ExaEpi/build/bin/agent
+  shell: /bin/bash
+  worker_launch: echo 'flux';
+
+global.parameters:
+  SEED:
+    label: SEED%%
+    values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] 
+
+merlin:
+  samples:
+    generate:
+      cmd: |
+        mkdir $(SCRIPTS)
+        cp -r /global/homes/k/keilbart/Scripts/merlin_exaepi/*.py $(SCRIPTS)
+        python $(SCRIPTS)/create_samples.py -shelter_day $(SHELTER_START) -shelter_num_days $(NR_OF_DAYS) -p_trans $(P_TRANS) -compliance $(COMPLIANCE) -outfile $(SAMPLE_FILE)
+
+    column_labels: [SHELTER_DAY, TRANSMISSION, COMPLIANCE]
+    file: $(SAMPLE_FILE)
+    level_max_dirs: 150
+
+  resources:
+    task_server: celery
+    overlap: True
+    workers:
+      nonsimworkers:
+        args: -l INFO --concurrency 60 --prefetch-multiplier 1 -O fair
+        nodes: 12
+        steps: [setup, post_processing]
+      simworkers:
+        args: -l INFO --concurrency 4 --prefetch-multiplier 1 -O fair
+        nodes: 12
+        steps: [sim_runs]
+
+study:
+  - name: setup
+    description: Copy binary for ExaEpi simulations
+    run:
+      cmd: |
+        mkdir $(MERLIN_INFO)/Code
+        mkdir $(MERLIN_INFO)/Census
+        cp $(EXECUTABLE) $(MERLIN_INFO)/Code
+        cp $(CENSUS_FILENAME) $(MERLIN_INFO)/Census
+        cp $(WORKERFLOW_FILENAME) $(MERLIN_INFO)/Census
+        cp $(CASE_FILENAME) $(MERLIN_INFO)/Census
+
+        exit $(MERLIN_SUCCESS)
+      nodes: 1
+      cores per task: 1
+      task_queue: processing_queue
+
+  - name: sim_runs
+    description: Production run of ExaEpi
+    run:
+      cmd: |
+        echo "$(MERLIN_SAMPLE_ID) $(Shelter_Day) $(Transmission) $(Compliance)"
+        # Copy all the local files needed for execution
+        cp $(MERLIN_INFO)/Code/agent $(WORKSPACE)/$(MERLIN_SAMPLE_PATH)
+        cp $(MERLIN_INFO)/Census/BayArea.dat $(WORKSPACE)/$(MERLIN_SAMPLE_PATH)
+        cp $(MERLIN_INFO)/Census/BayArea-wf.bin $(WORKSPACE)/$(MERLIN_SAMPLE_PATH)
+        cp $(MERLIN_INFO)/Census/July4.cases $(WORKSPACE)/$(MERLIN_SAMPLE_PATH)
+
+        # Create input file
+        python $(SCRIPTS)/create_input.py -seed $(SEED) -trans $(Transmission) -compliance $(Compliance) -shelter_day $(Shelter_Day) -outfile $(WORKSPACE)/$(MERLIN_SAMPLE_PATH)
+
+        # Call the actual simulation
+        $(LAUNCHER) $(WORKSPACE)/$(MERLIN_SAMPLE_PATH)/agent inputs
+
+        if [[ -f "$(WORKSPACE)/$(MERLIN_SAMPLE_PATH)/output.dat" ]]; then
+          exit $(MERLIN_SUCCESS)
+        else
+          exit $(MERLIN_RETRY)
+        fi
+
+      max_retries: 3
+      procs: 1
+      nodes: 1
+      gpus per task: 1
+      depends: [setup]
+      task_queue: sim_queue
+
+  - name: post_processing
+    description: Parse the plt folders to get the relevant data saved to a hdf5 file.
+    run:
+      cmd: |
+        $(LAUNCHER) python $(SCRIPTS)/pull_plot_data.py -dir $(sim_runs.workspace)/$(MERLIN_SAMPLE_PATH) -outfile $(sim_runs.workspace)/$(MERLIN_SAMPLE_PATH)
+
+        if [[ -f "$(sim_runs.workspace)/$(MERLIN_SAMPLE_PATH)/PARSE_FINISHED" ]]; then
+          exit $(MERLIN_SUCCESS)
+        else
+          exit $(MERLIN_RETRY)
+        fi
+
+      max_retries: 2
+      nodes: 1
+      procs: 1
+      depends: [sim_runs]
+      task_queue: processing_queue
+
+  - name: cleanup
+    description: Cleanup the plt folders
+    run:
+      cmd: |
+        timeout 10m rm -rf $(sim_runs.workspace)/$(MERLIN_SAMPLE_PATH)/plt*/
+        timeout 1m rm $(sim_runs.workspace)/$(MERLIN_SAMPLE_PATH)/agent
+
+        if [[ $(ls $(sim_runs.workspace)/$(MERLIN_SAMPLE_PATH)/plt*/ | wc -l) -eq 0 ]]; then
+          exit $(MERLIN_SUCCESS)
+        else
+          exit $(MERLIN_RETRY)
+        fi
+
+      max_retries: 5
+      nodes: 1
+      procs: 1
+      depends: [post_processing]
+      task_queue: processing_queue
