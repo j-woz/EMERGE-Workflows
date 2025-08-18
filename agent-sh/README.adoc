@@ -11,6 +11,7 @@ set(CMAKE_CUDA_FLAGS "-I$MPICH/include")
 ----
 +
 into:
++
 .. +ExaEpi/CMakeLists.txt+
 .. +ExaEpi/build/_deps/amrex-src/CMakeLists.txt+
 . Run +cmake+ for ExaEpi with:
