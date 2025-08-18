@@ -1,0 +1,29 @@
+
+= Agent Workflow via Shell Invocation (agent-sh)
+
+== Build
+
+. Compile a plain MPICH, called +$MPICH+
+. Insert this line:
++
+----
+set(CMAKE_CUDA_FLAGS "-I$MPICH/include")
+----
++
+into:
+.. +ExaEpi/CMakeLists.txt+
+.. +ExaEpi/build/_deps/amrex-src/CMakeLists.txt+
+. Run +cmake+ for ExaEpi with:
++
+----
+$ cmake
+    -DCMAKE_C_COMPILER=$MPICH/bin/mpicc
+    -DCMAKE_CXX_COMPILER=$MPICH/bin/mpicxx
+    -DAMReX_GPU_BACKEND=CUDA
+----
++
+. Then:
++
+----
+$ make
+----
