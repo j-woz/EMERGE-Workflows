@@ -1,0 +1,6 @@
+#!/bin/sh
+
+echo "gpu: PMI_RANK=$PMI_RANK"
+export CUDA_VISIBLE_DEVICES=$PMI_RANK
+echo "command: ${@}"
+${@}
