@@ -3,6 +3,8 @@
 
 == Build
 
+These notes are how to compile everything from scratch.  Users can skip down to <<Installations>>.
+
 . Compile a plain MPICH, called `$MPICH`
 
 . Insert this line:
