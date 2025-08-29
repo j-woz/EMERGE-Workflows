@@ -37,6 +37,8 @@ $ make
 
 === Perlmutter
 
+These are encoded in `settings.sh` .
+
 * MPICH:  `/global/cfs/cdirs/m3623/sfw/mpich-4.3.0`
 * ExaEpi: `/global/cfs/cdirs/m3623/sfw/ExaEpi-mpich`
 ** Data: A path-consistent copy of the example data is here too
@@ -77,7 +79,16 @@ $ ./one-shot-submit.sh
 
 === Loop
 
-
-==== Input files
-
-==== Outputs
+. Runs the agent several times in a loop to test simple sweeps
+. Edit `loop-submit.sh` to set the data locations
+. The workflow is in `loop.swift`
+.. Each input file provided on the command line to this script will be run
+.. Swift/T loops like this are concurrent.  The tasks produced may execute in any order, on any available resources
+. Run with:
++
+----
+$ ./loop-submit.sh
+----
++
+. Output is as for the `one-shot` workflow, except:
+.. The output/error streams from the agent go to `TURBINE_OUTPUT/{output,errors}-{i}.txt`, for each loop iteration `i`, as specified in `loop.swift`
