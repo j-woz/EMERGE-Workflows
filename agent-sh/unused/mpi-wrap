@@ -1,0 +1,42 @@
+#!/bin/sh
+set -e
+
+exec 2>&1
+
+HOST=$( hostname )
+echo mpi-wrap: $( which mpiexec )
+echo mpi-wrap: HOST $HOST
+echo mpi-wrap: PMI_RANK $PMI_RANK
+echo mpi-wrap: PMI_FD $PMI_FD
+echo mpi-wrap: PMI_SIZE  $PMI_SIZE
+echo mpi-wrap: MPI_LOCALNRANKS $MPI_LOCALNRANKS
+echo mpi-wrap: MPI_LOCALRANKID $MPI_LOCALRANKID
+echo mpi-wrap: MPIR_CVAR_CH3_INTERFACE_HOSTNAME $MPIR_CVAR_CH3_INTERFACE_HOSTNAME
+
+# for E in $( printenv --null | sort --zero-terminated | tr '\0' '\n' | sed 's/=.*//' )
+# do
+#   if [[ $E == MPICH_* ]] || \
+#      [[ $E == SLURM*  ]] || \
+#      [[ $E == HYDRA_* ]] || \
+#      [[ $E == PMI_*   ]] || \
+#      [[ $E == I_MPI_* ]]
+#   then
+#     if [[ $E == SLURM_JOB_GPUS            ]] || \
+#        [[ $E == SLURM_GTIDS               ]] || \
+#        [[ $E == MPICH_GPU_SUPPORT_ENABLED ]]
+#     then
+#       echo skip: $E=${!E}
+#     else
+#       echo unset $E=${!E}
+#       unset $E
+#     fi
+#   fi
+# done
+
+pe.zsh > env-wrap-$HOST.txt
+
+set -x
+
+sleep 5
+# -launcher fork
+mpiexec "${@}"

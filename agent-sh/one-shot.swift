@@ -6,12 +6,19 @@
    e.g., /path/to/inputs.bay
 */
 
+// Swift/T builtin libraries:
+import python;
 import sys;
 
-app agent(file inputs)
-{
-  // "gpu" is the shell wrapper in 
-  "mpiexec" "-n" "4" "gpu" "agent" inputs ;
-}
+// In ./agent.swift:
+import agent;
 
-agent(input(argp(1)));
+// Just test TensorFlow:
+python("import tensorflow ; print('one-shot: TensorFlow is OK')");
+
+// Output files for the agent:
+file o_file<"agent-out.txt">;
+file e_file<"agent-err.txt">;
+
+// Run the agent:
+(o_file, e_file) = agent(input(argp(1)));

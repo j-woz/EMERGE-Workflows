@@ -7,11 +7,15 @@ source /usr/share/lmod/lmod/init/zsh
 
 set -eu
 
+THIS=${0:h:A}
+source $THIS/settings.sh
+
 module load cudatoolkit
 
-MPICH=/global/cfs/cdirs/m3623/wozniak/sfw/mpich-4.3.0
-EXAEPI=/global/u1/w/wozniak/proj/ExaEpi.mpich
+pe > pe.log
 
-PATH=$MPICH/bin:$EXAEPI/build/bin:$PATH
-
-srun mpiexec -n 2 agent $EXAEPI/examples/inputs.bay
+# Works w/w/o srun:
+# Must use srun to get on compute node!
+# UI session is on login node!
+set -x
+srun mpiexec -launcher fork -n 2 agent $EXAEPI/examples/inputs.bay

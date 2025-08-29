@@ -1,6 +1,30 @@
 #!/bin/sh
 
-echo "gpu: PMI_RANK=$PMI_RANK"
+# GPU wrapper
+# Sets CUDA_VISIBLE_DEVICES based on PMI environment
+# Can do a lot of logging
+# Then runs the user command given on the command line.
+
+# ADLB_RANK_OFFSET is set by ADLB
+# PMI_RANK         is set by MPICH mpiexec
+
 export CUDA_VISIBLE_DEVICES=$PMI_RANK
-echo "command: ${@}"
+
+# HOST=$( hostname )
+
+# echo "gpu: PWD=$PWD"
+# echo "gpu: PMI_RANK=$PMI_RANK"
+# echo "gpu: HOST=$HOST"
+# echo "gpu:" $( which mpiexec )
+# echo "gpu: command: ${@}"
+
+# Log full environment:
+# if [ $PMI_RANK == 0 ]
+# then
+# printenv --null | \
+#   sort --zero-terminated | \
+#   tr '\0' '\n'
+# fi
+
+# Run the given command!
 ${@}
