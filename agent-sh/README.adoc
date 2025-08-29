@@ -4,13 +4,14 @@
 == Build
 
 . Compile a plain MPICH, called `$MPICH`
+
 . Insert this line:
 +
 ----
 set(CMAKE_CUDA_FLAGS "-I$MPICH/include")
 ----
 +
-into:
+into both:
 +
 .. `ExaEpi/CMakeLists.txt`
 .. `ExaEpi/build/_deps/amrex-src/CMakeLists.txt`
@@ -21,6 +22,7 @@ $ cmake
     -DCMAKE_C_COMPILER=$MPICH/bin/mpicc
     -DCMAKE_CXX_COMPILER=$MPICH/bin/mpicxx
     -DAMReX_GPU_BACKEND=CUDA
+    -D
 ----
 +
 . Then:
@@ -28,3 +30,52 @@ $ cmake
 ----
 $ make
 ----
+
+== Installations
+
+=== Perlmutter
+
+* MPICH:  `/global/cfs/cdirs/m3623/sfw/mpich-4.3.0`
+* ExaEpi: `/global/cfs/cdirs/m3623/sfw/ExaEpi-mpich`
+** Data: A path-consistent copy of the example data is here too
+* Swift/T: `/global/cfs/cdirs/m5071/sfw/swift-t`
+** This is built with modules `PrgEnv-gnu` and `tensorflow/2.15.0` (for Python)
+
+== System configurations
+
+=== Perlmutter
+
+Want to run 1 multi-rank-GPU ExaEpi per node, using 4 processes, 4 GPUs.
+
+==== Rank/GPU configuration
+
+. Swift/T is built to use the system MPI
+. ExaEpi is built with MPICH so that it can only do intra-node communication
+. Swift/T is configured to run 1 worker process (a pilot job) per node via `PPN=1`
+. Our `agent.swift` is hard-coded to run the `agent` in a 4-rank MPI job
+
+== Workflows
+
+This information should be portable across systems.
+
+=== Single-shot
+
+. Runs the agent once for debugging
+. Edit `one-shot-submit.sh` to set the data location
+. The workflow is in `one-shot.swift`
+. Run with:
++
+----
+$ ./one-shot-submit.sh
+----
++
+. This submits a job, reports the `JOB_ID`, and creates a workflow output directory `TURBINE_OUTPUT` (which can be customized)
+. The `stdout` stream from the workflow goes to `TURBINE_OUTPUT/output.txt`
+. The output/error streams from the agent go to `TURBINE_OUTPUT/agent-{out,err}.txt`, as specified in `one-shot.swift`
+
+=== Loop
+
+
+==== Input files
+
+==== Outputs
