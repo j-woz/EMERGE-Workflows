@@ -29,3 +29,4 @@ disease.hospitalization_days_alpha = 1.38 1.38 1.38
 disease.hospitalization_days_beta = 7.23 7.23 7.23
 agent.seed = 47
 disease.p_trans = 0.00055
+diag.output_filename = output_8_v2_470.dat
