@@ -1,4 +1,18 @@
-*.dat
+# ExaEpi inputs:
 *.bay
+# ExaEpi outputs:
+*.dat
+
+# Workflow output directory link:
+turbine-output
+
+# Workflow output streams:
 errors-*.txt
 output-*.txt
+*.log
+
+# Swift/T intermediate code:
+*.tic
+
+# Directory for local unused files:
+parts
