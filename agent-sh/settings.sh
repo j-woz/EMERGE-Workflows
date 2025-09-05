@@ -8,7 +8,6 @@ SFW=/global/cfs/cdirs/m5071/sfw
 EXAEPI=$SFW/ExaEpi-mpich
 MPICH=$SFW/mpich-4.3.0
 SWIFT=$SFW/swift-t
-# $HOME/Public/sfw/compute/swift-t/2025-08-14
 
 PATH=$THIS:$EXAEPI/bin:$SWIFT/stc/bin:$MPICH/bin:$PATH
 
