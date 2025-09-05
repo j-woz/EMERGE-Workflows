@@ -10,15 +10,18 @@ SWIFT=/global/u1/w/wozniak/Public/sfw/Miniconda/312-Swift/swift-t
 CONDA=/global/u1/w/wozniak/Public/sfw/Miniconda/312-Swift
 
 # Activate Anaconda for Swift/T
-# Turn off error checking for Anaconda:
-set +eu
-PATH=$CONDA/bin:$PATH
-source $CONDA/etc/profile.d/conda.sh
-conda activate $CONDA
-# Add JVM location for Swift/T:
-PATH=$CONDA_PREFIX/lib/jvm:$PATH
-# Restore error checking:
-set -eu
+# Turn off error checking for Anaconda
+#      and redirect useles output:
+{
+  set +eu
+  PATH=$CONDA/bin:$PATH
+  source $CONDA/etc/profile.d/conda.sh
+  conda activate $CONDA
+  # Add JVM location for Swift/T:
+  PATH=$CONDA_PREFIX/lib/jvm:$PATH
+  # Restore error checking:
+  set -eu
+} > $THIS/anaconda.log
 
 PATH=$THIS:$SWIFT/stc/bin:$PATH
 # :$MPICH/bin
