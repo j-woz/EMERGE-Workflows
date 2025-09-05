@@ -92,3 +92,29 @@ $ ./loop-submit.sh
 +
 . Output is as for the `one-shot` workflow, except:
 .. The output/error streams from the agent go to `TURBINE_OUTPUT/{output,errors}-{i}.txt`, for each loop iteration `i`, as specified in `loop.swift`
+
+=== Loop-Glob
+
+. Runs the agent several times in a loop to test simple sweeps
+. Set up a `DATA` directory:
++
+----
+WILL NOT WORK FOR USERS!!!
+$ DATA=/global/cfs/cdirs/m5071/sfw/ExaEpi-mpich/data
+----
+. Copy:
++
+----
+$ cp ../data-sets/Feb1.cases $DATA/CaseData
+----
+. Set up an `INPUTS` directory, an absolute path:
++
+----
+$ INPUTS=$PWD/../run-001-inputs
+----
+. Run:
++
+----
+$ ./loop-glob-submit.sh $DATA $INPUTS
+----
+. To change the data file names, edit the `params[]` entries in `loop-glob.swift`
