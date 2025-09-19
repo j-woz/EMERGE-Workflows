@@ -39,8 +39,8 @@ $ make
 
 These are encoded in `settings.sh` .
 
-* MPICH:  `/global/cfs/cdirs/m3623/sfw/mpich-4.3.0`
-* ExaEpi: `/global/cfs/cdirs/m3623/sfw/ExaEpi-mpich`
+* MPICH:  `/global/cfs/cdirs/m5071/sfw/mpich-4.3.0`
+* ExaEpi: `/global/cfs/cdirs/m5071/sfw/ExaEpi-mpich`
 ** Data: A path-consistent copy of the example data is here too
 * Swift/T: `/global/cfs/cdirs/m5071/sfw/swift-t`
 ** This is built with modules `PrgEnv-gnu` and `tensorflow/2.15.0` (for Python)
