@@ -13,9 +13,9 @@ PATH=$THIS:$EXAEPI/bin:$SWIFT/stc/bin:$MPICH/bin:$PATH
 
 # Swift/T scheduler settings follow:
 
-# This is the old project (early 2025):
+# This is the old EMERGE project (early 2025):
 # export PROJECT=m3623_g
-# This is the ALCC from 2025-08:
+# This is the EMERGE ALCC from 2025-08:
 export PROJECT=m5071
 
 export QUEUE=debug
