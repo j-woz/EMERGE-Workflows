@@ -9,15 +9,14 @@ THIS=${0:h:A}
 
 source $THIS/settings.sh
 
-PROCS=4
-export PPN=1
-
 if (( ${#*} < 2 ))
 then
   print "Provide DIR_DATA DIR_INPUTS [PARAMS...]"
   return 1
 fi
 
+export DIR_INPUTS=$2
+
 set -x
 which mpiexec agent swift-t
-swift-t -m slurm -n $PROCS loop-glob.swift ${*}
+swift-t -m slurm -n $PROCS -t i:copy-inputs.sh loop-glob.swift ${*}

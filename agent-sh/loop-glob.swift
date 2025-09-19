@@ -12,7 +12,6 @@ import sys;
 import agent;
 
 string dir_data   = argp(1);
-string dir_inputs = argp(2);
 
 // Construct command-line parameters for the agent
 printf("loop-glob: dir_data: " + dir_data);
@@ -23,15 +22,15 @@ string params[] = [
 ];
 
 // Find all the input files:
-printf("loop-glob: dir_inputs: " + dir_inputs);
-file inputs[] = glob(dir_inputs / "*.bay");
+// printf("loop-glob: dir_inputs: " + realpath_string("inputs"));
+file inputs[] = glob("inputs/*.bay");
 printf("loop-glob: found inputs: " + size(inputs));
 
 foreach input_file, i in inputs
 {
-  output = "output-%i.txt" % i;
-  errors = "errors-%i.txt" % i;
-  printf("loop-glob: running ExaEpi input[%i]: %s",
+  output = "output/output-%4i.txt" % i;
+  errors = "output/errors-%4i.txt" % i;
+  printf("loop-glob: running ExaEpi input[%4i]: %s",
          i, filename(input_file));
   file o_file<output>;
   file e_file<errors>;
