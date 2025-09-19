@@ -19,7 +19,11 @@ PATH=$THIS:$EXAEPI/bin:$SWIFT/stc/bin:$MPICH/bin:$PATH
 export PROJECT=m5071
 
 export QUEUE=debug
-export WALLTIME=05:00
+# export QUEUE=regular
+export WALLTIME=00:05:00
+# PROCS=128
+PROCS=4
+export PPN=1
 
 # This inserts the SBATCH directive into the job script:
 export TURBINE_DIRECTIVE="
