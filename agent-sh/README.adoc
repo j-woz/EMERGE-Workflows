@@ -118,3 +118,4 @@ $ INPUTS=$PWD/../run-001-inputs
 $ ./loop-glob-submit.sh $DATA $INPUTS
 ----
 . To change the data file names, edit the `params[]` entries in `loop-glob.swift`
+. At runtime, a hook `copy-inputs.sh` copies the `$INPUTS` to the `inputs` directory in the workflow output, and uses that location for the inputs.
