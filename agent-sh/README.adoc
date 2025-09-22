@@ -140,5 +140,5 @@ $ ./loop-glob-submit.sh $INPUTS
 .. The inputs are in `$TURBINE_OUTPUT/inputs`
 .. For each input index (`input_8_v2_157.bay`),
 ... there is a corresponding output file (`output_8_v2_157.dat`) and
-... output/error streams (`output/output-0157.txt`, output/errors-0157.txt`)
+... output/error streams (`output/output-0157.txt`, `output/errors-0157.txt`)
 . To change the scheduler settings (node count, walltime, etc.), edit `settings.sh` .
