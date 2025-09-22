@@ -17,10 +17,10 @@ import agent;
 file inputs[] = glob("inputs/*.bay");
 printf("loop-glob: found inputs: " + size(inputs));
 
-foreach input_file, i in inputs
+foreach ifile, i in inputs
 {
   // Example: "input_8_v2_157.bay" -> "input_8_v2_157"
-  name = rootname_string(input_file);
+  name = rootname_string(ifile);
   // Example: "input_8_v2_157" -> "157"
   string tokens[] = split(name, "_");
   index = string2int(tokens[size(tokens)-1]);
