@@ -19,9 +19,9 @@ printf("loop-glob: found inputs: " + size(inputs));
 
 foreach input_file, i in inputs
 {
-  output = "output/output-%4i.txt" % i;
-  errors = "output/errors-%4i.txt" % i;
-  printf("loop-glob: running ExaEpi input[%4i]: %s",
+  output = "output/output-%04i.txt" % i;
+  errors = "output/errors-%04i.txt" % i;
+  printf("loop-glob: running ExaEpi input[%04i]: %s",
          i, filename(input_file));
   file o_file<output>;
   file e_file<errors>;
