@@ -15,7 +15,8 @@ then
   return 1
 fi
 
-export DIR_INPUTS=$1
+# Convert user argument to Absolute path:
+export DIR_INPUTS=${1:A}
 
 set -x
 which mpiexec agent swift-t
