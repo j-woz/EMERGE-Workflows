@@ -1,4 +1,6 @@
 
+:toc:
+
 = Agent Workflow via Shell Invocation (agent-sh)
 
 This directory contains several workflows for running the ExaEpi `agent` .
