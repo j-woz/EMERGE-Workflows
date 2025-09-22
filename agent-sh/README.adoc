@@ -133,5 +133,10 @@ $ ./loop-glob-submit.sh $INPUTS
 ----
 . At runtime, a hook `copy-inputs.sh` copies the `$INPUTS` to the `inputs` directory in the workflow output, and uses that location for the inputs.
 . The workflow reports the new `TURBINE_OUTPUT` directory.  This contains all workflow outputs
-.
+.. This is also linked to `$PWD/turbine-output`, but this link is re-written when you run the workflow again
+.. The generated submit script is at `$TURBINE_OUTPUT/turbine-slurm.sh`, this can help with scheduler debugging
+.. The inputs are in `$TURBINE_OUTPUT/inputs`
+.. For each input index (`input_8_v2_157.bay`),
+... there is a corresponding output file (`output_8_v2_157.dat`) and
+... output/error streams (`output/output-0157.txt`, output/errors-0157.txt`)
 . To change the scheduler settings (node count, walltime, etc.), edit `settings.sh` .
