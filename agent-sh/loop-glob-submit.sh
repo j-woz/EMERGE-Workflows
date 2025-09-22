@@ -9,13 +9,13 @@ THIS=${0:h:A}
 
 source $THIS/settings.sh
 
-if (( ${#*} < 2 ))
+if (( ${#*} != 1 ))
 then
-  print "Provide DIR_DATA DIR_INPUTS [PARAMS...]"
+  print "Provide DIR_INPUTS"
   return 1
 fi
 
-export DIR_INPUTS=$2
+export DIR_INPUTS=$1
 
 set -x
 which mpiexec agent swift-t
