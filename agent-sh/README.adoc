@@ -1,6 +1,8 @@
 
 = Agent Workflow via Shell Invocation (agent-sh)
 
+This directory contains several workflows for running the ExaEpi `agent` .
+
 == Build
 
 These notes are how to compile everything from scratch.  Users can skip down to <<Installations>>.
@@ -44,6 +46,23 @@ These are encoded in `settings.sh` .
 ** Data: A path-consistent copy of the example data is here too
 * Swift/T: `/global/cfs/cdirs/m5071/sfw/swift-t`
 ** This is built with modules `PrgEnv-gnu` and `tensorflow/2.15.0` (for Python)
+
+== User setup
+
+Even when using the software from <<Installations>>, the workflow user must:
+
+. Clone the ExaEpi repo `git@github.com:AMReX-Agent/ExaEpi.git`
+. Clone this repo `git@github.com:j-woz/EMERGE-Workflows.git`
+. Enter the NERSC Jupyter environment at https://jupyter.nersc.gov
+.. Load the kernel "HPC Bootcamp 2025" (from "No kernel", upper right of window)
+.. Run the input-generator script from `EMERGE-Workflows/notebooks/input_gen.ipynb`
+. Run the desired workflow below from <<Workflows>>
+
+=== Input generator script: `input_gen.ipynb`
+
+* This notebook generates a directory of inputs
+* Each generated input file has a unique random number generator `seed` and `p_trans` combination
+* You can easily edit the number of `seeds` and the list of `p_trans_choices` .
 
 == System configurations
 
@@ -95,27 +114,17 @@ $ ./loop-submit.sh
 
 === Loop-Glob
 
-. Runs the agent several times in a loop to test simple sweeps
-. Set up a `DATA` directory:
+Runs the agent several times in a loop, once for each input file in a given directory
+
+. Set up a directory with your inputs as described above, for example:
 +
 ----
-WILL NOT WORK FOR USERS!!!
-$ DATA=/global/cfs/cdirs/m5071/sfw/ExaEpi-mpich/data
-----
-. Copy:
-+
-----
-$ cp ../data-sets/Feb1.cases $DATA/CaseData
-----
-. Set up an `INPUTS` directory, an absolute path:
-+
-----
-$ INPUTS=$PWD/../run-001-inputs
+$ INPUTS=$HOME/input-data-001
 ----
 . Run:
 +
 ----
-$ ./loop-glob-submit.sh $DATA $INPUTS
+$ ./loop-glob-submit.sh $INPUTS
 ----
-. To change the data file names, edit the `params[]` entries in `loop-glob.swift`
 . At runtime, a hook `copy-inputs.sh` copies the `$INPUTS` to the `inputs` directory in the workflow output, and uses that location for the inputs.
+. To change the scheduler settings (node count, walltime, etc.), edit `settings.sh` .
