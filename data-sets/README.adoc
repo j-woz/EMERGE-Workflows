@@ -4,3 +4,6 @@ From Kyle Nguyen email 2025-09-05
 
 Feb1.cases::
 From Kyle Nguyen email 2025-09-04
+
+BayArea.dat::
+Copy in from ExaEpi/data/CensusData 2025-09-22
