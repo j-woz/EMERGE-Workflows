@@ -6,6 +6,7 @@
 
 import files;
 import io;
+import string;
 import sys;
 
 // import agent_debug;
@@ -20,15 +21,15 @@ printf("loop-glob: found inputs: " + size(inputs));
 foreach ifile, i in inputs
 {
   // Example: "input_8_v2_157.bay" -> "input_8_v2_157"
-  name = rootname_string(ifile);
+  name = rootname(ifile);
   // Example: "input_8_v2_157" -> "157"
   string tokens[] = split(name, "_");
   index = string2int(tokens[size(tokens)-1]);
   output = "output/output-%04i.txt" % index;
   errors = "output/errors-%04i.txt" % index;
   printf("loop-glob: running ExaEpi input[%04i]: %s",
-         index, filename(input_file));
+         index, filename(ifile));
   file o_file<output>;
   file e_file<errors>;
-  (o_file, e_file) = agent(input_file);
+  (o_file, e_file) = agent(ifile);
 }
