@@ -22,9 +22,7 @@ foreach ifile, i in inputs
 {
   // Example: "input_8_v2_157.bay" -> "input_8_v2_157"
   name = rootname(ifile);
-  // Example: "input_8_v2_157" -> "157"
-  // string tokens[] = split(name, "_");
-  // index = string2int(tokens[size(tokens)-1]);
+  // Example: "input_8_v2_157" -> "input_8_v2_157.stdout"
   output = name + ".stdout";
   errors = name + ".stderr";
   printf("loop-glob: running ExaEpi input %s", filename(ifile));
