@@ -138,7 +138,7 @@ $ ./loop-glob-submit.sh $INPUTS
 .. This is also linked to `$PWD/turbine-output`, but this link is re-written when you run the workflow again
 .. The generated submit script is at `$TURBINE_OUTPUT/turbine-slurm.sh`, this can help with scheduler debugging
 .. The inputs are in `$TURBINE_OUTPUT/inputs`
-.. For each input index (`input_8_v2_157.bay`),
+.. For each input file (`inputs/input_8_v2_157.bay`),
 ... there is a corresponding output file (`output_8_v2_157.dat`) and
-... output/error streams (`output/output-0157.txt`, `output/errors-0157.txt`)
+... output/error streams (`inputs/input_8_v2_157.stdout`, `inputs/input_8_v2_157.stdout`)
 . To change the scheduler settings (node count, walltime, etc.), edit `settings.sh` .
