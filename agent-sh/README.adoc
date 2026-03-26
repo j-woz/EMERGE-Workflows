@@ -58,6 +58,14 @@ These are encoded in `settings.sh` .
 * Swift/T: `/global/cfs/cdirs/m5071/sfw/swift-t`
 ** This is built with modules `PrgEnv-gnu` and `tensorflow/2.15.0` (for Python)
 
+=== Aurora
+
+==== System MPI
+
+* MPI: `module mpich/opt/develop-git.6037a7a`
+* ExaEpi: `/lus/flare/projects/EpiCalib/sfw/ExaEpi_2026-03-26`
+** Data: A path-consistent copy of the example data is here too
+
 == User setup
 
 Even when using the software from <<Installations>>, the workflow user must:
@@ -87,6 +95,21 @@ Want to run 1 multi-rank-GPU ExaEpi per node, using 4 processes, 4 GPUs.
 . ExaEpi is built with MPICH so that it can only do intra-node communication
 . Swift/T is configured to run 1 worker process (a pilot job) per node via `PPN=1`
 . Our `agent.swift` is hard-coded to run the `agent` in a 4-rank MPI job
+
+=== Aurora
+
+==== Default build with system MPI
+
+. Make `build` directory somewhere, `cd` to that directory
+. Run
++
+----
+$ module load oneapi mpich/opt/develop-git.6037a7a
+$ cmake -DCMAKE_C_COMPILER=$(   which mpicc )
+        -DCMAKE_CXX_COMPILER=$( which mpicxx )
+$ make
+----
++
 
 == Workflows
 
