@@ -60,11 +60,18 @@ These are encoded in `settings.sh` .
 
 === Aurora
 
+==== Vanilla MPICH
+
+* MPICH: `/lus/flare/projects/EpiCalib/sfw/mpich-5.0.0rc3`
+* ExaEpi: `/lus/flare/projects/EpiCalib/sfw/ExaEpi_vanilla_2026-03-26`
+** Data: A path-consistent copy of the example data is here too
+
 ==== System MPI
 
 * MPI: `module mpich/opt/develop-git.6037a7a`
-* ExaEpi: `/lus/flare/projects/EpiCalib/sfw/ExaEpi_2026-03-26`
+* ExaEpi: `/lus/flare/projects/EpiCalib/sfw/ExaEpi_vendor_2026-03-26`
 ** Data: A path-consistent copy of the example data is here too
+** Need to unset `LD_LIBRARY_PATH` to run the `agent`
 
 == User setup
 
@@ -97,6 +104,23 @@ Want to run 1 multi-rank-GPU ExaEpi per node, using 4 processes, 4 GPUs.
 . Our `agent.swift` is hard-coded to run the `agent` in a 4-rank MPI job
 
 === Aurora
+
+==== ExaEpi build with vanilla MPICH
+
+. Compile MPICH from source
+.. Needed to install `automake-1.16` from source
+.. Use `autoreconf -f -i` in MPICH
+.. `configure` with `--with-ze=no` to avoid hwloc problems in `yaksa`
+.. Use `module load oneapi` for `icx` and `icpx`
+. Build ExaEpi
++
+----
+# Set PATH for vanilla MPICH
+$ module load oneapi
+$ cmake -DCMAKE_C_COMPILER=$(   which mpicc )
+        -DCMAKE_CXX_COMPILER=$( which mpicxx )
+$ make
+----
 
 ==== Default build with system MPI
 
