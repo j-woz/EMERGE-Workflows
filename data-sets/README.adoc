@@ -7,3 +7,10 @@ From Kyle Nguyen email 2025-09-04
 
 BayArea.dat::
 Copy in from ExaEpi/data/CensusData 2025-09-22
+
+NM_Mar16.cases::
+Copied from Box 2026-04-15
+https://anl.app.box.com/s/9gqrw8l4ot19hix6h0a1g3vs1z31nc3p
+
+nm-input.cfg::
+See header
