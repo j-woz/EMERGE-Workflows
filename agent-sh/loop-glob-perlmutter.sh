@@ -1,7 +1,7 @@
 #!/bin/zsh -f
 set -eu
 
-# LOOP GLOB SUBMIT SH
+# LOOP GLOB PERLMUTTER SH
 # All arguments passed to workflow
 # See README
 

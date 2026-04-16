@@ -1,5 +1,5 @@
 
-# SETTINGS SH
+# SETTINGS PERLMUTTER SH
 # For multi-MPI runs on Perlmutter
 
 # Software locations on Perlmutter:
