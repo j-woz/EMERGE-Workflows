@@ -46,6 +46,7 @@ ARGS()
     return 1
   }
 
+  # The user help message
   if (( ${#_MSG} )) _MSG=${_MSG[2]}
 
   # Setup SELF:basename
@@ -72,6 +73,7 @@ ARGS()
 
   # Help?
   if (( ${#_HELP} )) {
+    if (( ${#_VERBOSE} )) print "${_SELF}: HELP:"
     print "${_SELF}: usage: ${_L}"
     print $_MSG
     if (( ${#_E} )) exit 0
