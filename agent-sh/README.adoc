@@ -97,6 +97,8 @@ Even when using the software from <<Installations>>, the workflow user must:
 
 The `seed-loop.zsh` script generates inputs based on a given "base" input file and generates random seeds and appropriate output file names.
 
+See `seed-loop.zsh -h` for usage.
+
 == System configurations
 
 === Perlmutter
