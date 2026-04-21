@@ -13,7 +13,7 @@ msg()
 msgv()
 {
   local TEXT
-  printf -v TEXT "${*}"
+  printf -v TEXT "${@}"
   print ${(%)DATE_FMT} ${TEXT}
 }
 
