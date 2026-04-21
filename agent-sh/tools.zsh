@@ -2,6 +2,21 @@
 # For use in ${(%)DATE_FMT}
 DATE_FMT="%D{%Y-%m-%d} %D{%H:%M:%S}"
 
+# For prefix of set -x
+PS4='
++ '
+
+msg()
+{
+  print ${(%)DATE_FMT} ${*}
+}
+msgv()
+{
+  local TEXT
+  printf -v TEXT "${*}"
+  print ${(%)DATE_FMT} ${TEXT}
+}
+
 # Expects 0 arguments:
 alias args0='args - ${*}'
 alias args='ARGS $0'
@@ -112,4 +127,58 @@ _args_help()
   print "       Variable names (optionally with defaults X1:20 X2:30 ...)"
   print -- "  -"
   print '       Variable values (typically ${*})'
+}
+
+grab-rank()
+# F: A real file to link to
+# N: Integers to try: [0, N)
+# REPLY: The integer assigned or -1 on error
+{
+  local F=$1
+  local N=$2
+  # i: index L: a hard link
+  local i L
+  for (( i=0 ; i < N ; i++ ))
+  do
+    L=$F-$i
+    if ln $F $L
+    then
+      REPLY=$i
+      return
+    fi
+  done
+  return -1
+}
+
+rm0()
+# File removal, ok with empty args and args that do not exist
+# Safer than rm -f
+#   -v   : verbose
+#   -D   : individual treatment for directories (slower)
+#   -Drv : if arg is directory, report directory name,
+#                               not all contents
+{
+  local D R V
+  zparseopts -D -E D=D r=R v=V
+  local f
+  declare -a FILES DIRS
+  for f in ${*}
+  do
+    if [[ ! -e ${f} ]] continue
+    if (( ${#D} )) && [[ -d ${f} ]] {
+      DIRS+=${f}
+    } else {
+      FILES+=${f}
+    }
+  done
+
+  local DIR
+  for DIR in ${DIRS}
+  do
+    rm -r ${DIR}
+    if (( ${#V} )) print "removed directory '${DIR}'"
+  done
+
+  if (( ${#FILES} == 0 )) return 0
+  rm ${R} ${V} ${FILES}
 }

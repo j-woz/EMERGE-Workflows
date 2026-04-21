@@ -2,6 +2,7 @@
 set -eu
 
 # SEED LOOP
+# Makes CFG inputs for ExaEpi
 
 USAGE="
 COUNT:     Number of iterations
@@ -26,6 +27,6 @@ do
     print "# $NAME generated ${(%)DATE_FMT}\n"
     sed -f $THIS/seed-loop.sed $INPUT_CFG
     print "agent.seed = $SEED"
-    print "diag.output_filename = $RUN_DIR/$NAME.dat"
+    print "diag.output_filename = $NAME.dat"
   } >> $RUN_DIR/$NAME.cfg
 done
