@@ -79,9 +79,12 @@ Even when using the software from <<Installations>>, the workflow user must:
 
 . Clone the ExaEpi repo `git@github.com:AMReX-Agent/ExaEpi.git`
 . Clone this repo `git@github.com:j-woz/EMERGE-Workflows.git`
-. Enter the NERSC Jupyter environment at https://jupyter.nersc.gov
-.. Load the kernel "HPC Bootcamp 2025" (from "No kernel", upper right of window)
-.. Run the input-generator script from `EMERGE-Workflows/notebooks/input_gen.ipynb`
+. Generate inputs: one of:
+.. Jupyter:
+... Enter the NERSC Jupyter environment at https://jupyter.nersc.gov
+... Load the kernel "HPC Bootcamp 2025" (from "No kernel", upper right of window)
+.. Shell:
+... See `seed-loop` below
 . Run the desired workflow below from <<Workflows>>
 
 === Input generator script: `input_gen.ipynb`
@@ -89,6 +92,10 @@ Even when using the software from <<Installations>>, the workflow user must:
 * This notebook generates a directory of inputs
 * Each generated input file has a unique random number generator `seed` and `p_trans` combination
 * You can easily edit the number of `seeds` and the list of `p_trans_choices` .
+
+=== seed-loop
+
+The `seed-loop.zsh` script generates inputs based on a given "base" input file and generates random seeds and appropriate output file names.
 
 == System configurations
 
@@ -192,3 +199,11 @@ $ ./loop-glob-submit.sh $INPUTS
 ... there is a corresponding output file (`output_8_v2_157.dat`) and
 ... output/error streams (`inputs/input_8_v2_157.stdout`, `inputs/input_8_v2_157.stderr`)
 . To change the scheduler settings (node count, walltime, etc.), edit `settings.sh` .
+
+=== parallel-runs
+
+This workflow uses GNU Parallel for single-node multi-GPU execution.  On Aurora, we should be able to run at least 24 concurrent simulations.
+
+. Use `seed-loop` above to generate inputs
+. Use `parallel-runs.zsh -h` for usage.
+. See `run-single.zsh` for how ExaEpi `agent` is invoked
