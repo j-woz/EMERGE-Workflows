@@ -14,7 +14,7 @@ import sys;
 import agent;
 
 // Just test TensorFlow:
-python("import tensorflow ; print('one-shot: TensorFlow is OK')");
+// python("import tensorflow ; print('one-shot: TensorFlow is OK')");
 
 // Output files for the agent:
 file o_file<"agent-out.txt">;
