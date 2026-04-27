@@ -62,9 +62,10 @@ These are encoded in `settings-perlmutter-compute.sh` .
 
 ==== Vanilla MPICH
 
-* MPICH: `/lus/flare/projects/EpiCalib/sfw/mpich-5.0.0rc3`
-* ExaEpi: `/lus/flare/projects/EpiCalib/sfw/ExaEpi_vanilla_2026-03-26`
+* MPICH: `/lus/flare/projects/EpiCalib/sfw/mpich-git`
+* ExaEpi: `/lus/flare/projects/EpiCalib/sfw/ExaEpi_mpich-git_2026-04-24`
 ** Data: A path-consistent copy of the example data is here too
+* ExaEpi: `/lus/flare/projects/EpiCalib/sfw/swift-t`
 
 ==== System MPI
 
@@ -119,15 +120,31 @@ Want to run 1 multi-rank-GPU ExaEpi per node, using 4 processes, 4 GPUs.
 . Compile MPICH from source
 .. Needed to install `automake-1.16` from source
 .. Use `autoreconf -f -i` in MPICH
-.. `configure` with `--with-ze=no` to avoid hwloc problems in `yaksa`
+.. `configure` with
++
+----
+--disable-fortran
+--disable-doc
+--with-device=ch4:ofi
+# $(pkg-config libfabric --variable=prefix)
+--with-libfabric=/opt/cray/libfabric/1.22.0
+--with-ze
+--enable-ze-native=pvc
+--with-pmix=no
+----
 .. Use `module load oneapi` for `icx` and `icpx`
+.. Ensure `PMIX_NAMESPACE` is unset at runtime in `agent.swift` or equivalent
 . Build ExaEpi
 +
 ----
 # Set PATH for vanilla MPICH
 $ module load oneapi
+$ export MPICH_CC=icx
+$ export MPICH_CXX=icpx
 $ cmake -DCMAKE_C_COMPILER=$(   which mpicc )
         -DCMAKE_CXX_COMPILER=$( which mpicxx )
+        -DAMReX_GPU_BACKEND=SYCL
+        -Wno-dev
 $ make
 ----
 
@@ -142,6 +159,8 @@ $ cmake -DCMAKE_C_COMPILER=$(   which mpicc )
         -DCMAKE_CXX_COMPILER=$( which mpicxx )
 $ make
 ----
++
+. This does not work with the workflow, but works with the GNU Parallel approach as a fallback
 
 == Workflows
 
@@ -204,7 +223,7 @@ $ ./loop-glob-submit.sh $INPUTS
 
 === parallel-runs
 
-This workflow uses GNU Parallel for single-node multi-GPU execution.  On Aurora, we should be able to run at least 24 concurrent simulations.
+This workflow uses GNU Parallel for single-node multi-GPU execution.  On Aurora, we should be able to run at least 24 concurrent simulations.  This works with the vendor provided MPI.
 
 . Use `seed-loop` above to generate inputs
 . Use `parallel-runs.zsh -h` for usage.

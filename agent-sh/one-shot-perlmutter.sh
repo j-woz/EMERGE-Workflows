@@ -1,8 +1,10 @@
 #!/bin/zsh
 set -eu
 
+# ONE SHOT PERLMUTTER
+
 THIS=${0:h:A}
-source $THIS/settings.sh
+source $THIS/settings-perlmutter-compute.sh  #  settings.sh
 
 export PPN=1
 
