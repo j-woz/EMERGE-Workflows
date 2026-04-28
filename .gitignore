@@ -1,3 +1,9 @@
 # Directories of input files:
 *-inputs
 scratch/
+# agent outputs:
+Backtrace*
+# Swift/T TIC files:
+*.tic
+# Data
+*.tgz
