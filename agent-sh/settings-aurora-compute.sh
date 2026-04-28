@@ -1,5 +1,5 @@
 
-# SETTINGS PERLMUTTER SH
+# SETTINGS AURORA SH
 # For runs on Aurora
 
 # Software locations on Aurora:
