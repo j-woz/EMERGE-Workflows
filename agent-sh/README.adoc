@@ -14,9 +14,15 @@ Please file issues on this repo with any problems, questions, or documentation c
 These notes are how to compile everything from scratch.  Users can skip down to <<Installations>>.
 
 . Load module `cudatoolkit`
-. Compile a plain MPICH, called `$MPICH`
-
-. Insert this line:
+. Set up MPICH: Either:
+.. Compile a plain MPICH, called `$MPICH` ; or:
+.. Add our MPICH to `PATH`:
++
+----
+/global/cfs/cdirs/m5071/sfw/mpich-4.3.0
+----
++
+. Insert this line: (unnecessary with `-DCMAKE_CUDA_FLAGS` 2025-11-14?)
 +
 ----
 set(CMAKE_CUDA_FLAGS "-I$MPICH/include")
@@ -32,6 +38,7 @@ into both:
 $ cmake
     -DCMAKE_C_COMPILER=$MPICH/bin/mpicc
     -DCMAKE_CXX_COMPILER=$MPICH/bin/mpicxx
+    -DCMAKE_CUDA_FLAGS=-I$MPICH/include
     -DAMReX_GPU_BACKEND=CUDA
 ----
 +
@@ -54,7 +61,8 @@ These are encoded in `settings-perlmutter-compute.sh` .
 
 * MPICH:  `/global/cfs/cdirs/m5071/sfw/mpich-4.3.0`
 * ExaEpi: `/global/cfs/cdirs/m5071/sfw/ExaEpi-mpich`
-** Data: A path-consistent copy of the example data is here too
+** Data: A path-consistent copy of the example data is here too +
+(manually copied in from the git clone)
 * Swift/T: `/global/cfs/cdirs/m5071/sfw/swift-t`
 ** This is built with modules `PrgEnv-gnu` and `tensorflow/2.15.0` (for Python)
 
