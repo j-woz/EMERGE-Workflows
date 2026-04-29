@@ -11,6 +11,8 @@ SWIFT=$SFW/swift-t
 
 PATH=$THIS:$EXAEPI/bin:$SWIFT/stc/bin:$MPICH/bin:$PATH
 
+LD_LIBRARY_PATH=$MPICH/lib${LD_LIBRARY_PATH:+:}${LD_LIBRARY_PATH:-}
+
 # Swift/T scheduler settings follow:
 
 # This is the old EMERGE project (early 2025):
