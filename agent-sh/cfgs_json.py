@@ -98,7 +98,11 @@ def process(cfg_path, ude_path, output_dir):
             if output_lines and output_lines[-1].strip():
                 output_lines.append("\n")
             for k in commented_keys:
-                v = format_value(fragment[k])
+                val = fragment[k]
+                if k in ("disease.hospitalization_days_alpha",
+                         "disease.hospitalization_days_beta"):
+                    val = list(val) + list(val)
+                v = format_value(val)
                 output_lines.append(f"{k} = {v}\n")
 
         out_path = os.path.join(output_dir, stem + ".cfg")
