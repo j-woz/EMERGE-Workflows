@@ -16,53 +16,19 @@ SKIP_KEYS = {"instance", "replicates"}
 
 VERBOSE = False
 
-def verbose(msg):
-    if VERBOSE:
-        print(msg)
-
-def format_value(v):
-    if isinstance(v, list):
-        return " ".join(str(x) for x in v)
-    return str(v)
-
-def process(cfg_path, ude_path, output_dir="."):
-    with open(cfg_path) as f:
-        cfg_lines = f.readlines()
-
-    with open(ude_path) as f:
-        fragments = [json.loads(line) for line in f if line.strip()]
-
-    os.makedirs(output_dir, exist_ok=True)
-
-    for i, fragment in enumerate(fragments):
-        instance = fragment.get("instance", i + 1)
-        frag_keys = {k for k in fragment if k not in SKIP_KEYS}
-        commented_keys = []
-        output_lines = []
-
-        for line in cfg_lines:
-            m = re.match(r"^(\s*)([\w.]+)(\s*=\s*)(.*)(\n?)$", line)
-            if m and m.group(2) in frag_keys:
-                if line.startswith("#"):
-                    output_lines.append(line)
-                else:
-                    output_lines.append("# " + line)
-                commented_keys.append(m.group(2))
-            else:
-                output_lines.append(line)
-
-        if commented_keys:
-            if output_lines and output_lines[-1].strip():
-                output_lines.append("\n")
-            for k in commented_keys:
-                v = format_value(fragment[k])
-                output_lines.append(f"{k} = {v}\n")
-
-        fname = f"input_{instance}.cfg"
-        out_path = os.path.join(output_dir, fname)
-        with open(out_path, "w") as f:
-            f.writelines(output_lines)
-        verbose(f"Wrote {out_path}")
+def main():
+    global VERBOSE
+    args = parse_args()
+    VERBOSE = args.verbose
+    try:
+        process(
+            args.cfg_file,
+            args.upf_file,
+            args.output_dir,
+        )
+    except KeyError as e:
+        print(f"error: {e}", file=sys.stderr)
+        sys.exit(1)
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -78,7 +44,7 @@ def parse_args():
     )
     parser.add_argument(
         "output_dir",
-        help="Directory where output cfg files are written",
+        help="Directory for output cfg files and diag.output_filename",
     )
     parser.add_argument(
         "-v", "--verbose",
@@ -87,7 +53,67 @@ def parse_args():
     )
     return parser.parse_args()
 
+def process(cfg_path, ude_path, output_dir):
+    cfg_stem = os.path.splitext(os.path.basename(cfg_path))[0]
+
+    with open(cfg_path) as f:
+        cfg_lines = f.readlines()
+
+    with open(ude_path) as f:
+        fragments = [json.loads(line) for line in f if line.strip()]
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    for i, fragment in enumerate(fragments):
+        if "instance" not in fragment:
+            raise KeyError(
+                f"fragment {i} is missing required key 'instance'"
+            )
+        instance = fragment["instance"]
+        fragment["agent.seed"] = instance
+        stem = f"{cfg_stem}_{instance}"
+        frag_keys = {k for k in fragment if k not in SKIP_KEYS}
+        commented_keys = []
+        output_lines = []
+
+        for line in cfg_lines:
+            m = re.match(r"^(\s*)([\w.]+)(\s*=\s*)(.*?)(\n?)$", line)
+            if m and m.group(2) == "diag.output_filename":
+                prefix, key, eq, val, nl = m.groups()
+                _, ext = os.path.splitext(val)
+                new_val = os.path.join(output_dir, stem + ext)
+                output_lines.append(
+                    f"{prefix}{key}{eq}{new_val}"
+                )
+            elif m and m.group(2) in frag_keys:
+                if line.startswith("#"):
+                    output_lines.append(line)
+                else:
+                    output_lines.append("# " + line)
+                commented_keys.append(m.group(2))
+            else:
+                output_lines.append(line)
+
+        if commented_keys:
+            if output_lines and output_lines[-1].strip():
+                output_lines.append("\n")
+            for k in commented_keys:
+                v = format_value(fragment[k])
+                output_lines.append(f"{k} = {v}\n")
+
+        out_path = os.path.join(output_dir, stem + ".cfg")
+        with open(out_path, "w") as f:
+            f.writelines(output_lines)
+        verbose(f"Wrote {out_path}")
+
+def format_value(v):
+    if isinstance(v, list):
+        return " ".join(str(x) for x in v)
+    return str(v)
+
+def verbose(msg):
+    if VERBOSE:
+        print(msg)
+
 if __name__ == "__main__":
-    args = parse_args()
-    VERBOSE = args.verbose
-    process(args.cfg_file, args.upf_file, args.output_dir)
+    main()
