@@ -32,3 +32,5 @@ export TURBINE_DIRECTIVE="#PBS -l filesystems=home:flare"
 
 # # This is needed for our plain MPICH configuration:
 # export TURBINE_PRELAUNCH="export LD_LIBRARY_PATH=$MPICH/lib:\${LD_LIBRARY_PATH:-}"
+
+PS4='+ '
