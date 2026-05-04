@@ -54,6 +54,11 @@ def parse_args():
     return parser.parse_args()
 
 def process(cfg_path, ude_path, output_dir):
+
+    # fragments: List of JSON data from UDE
+    #            Each fragment is a dict specifying 1 simulation 
+    # output_lines: List of lines in new cfg file
+
     cfg_stem = os.path.splitext(os.path.basename(cfg_path))[0]
 
     with open(cfg_path) as f:
