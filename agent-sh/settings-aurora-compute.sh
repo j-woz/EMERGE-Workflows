@@ -20,12 +20,12 @@ export PROJECT=EpiCalib
 # See
 # Aurora limits queue debug to ???
 # Generally, schedulers prefer more nodes, smaller walltime
-export QUEUE=debug
+export QUEUE=${QUEUE:-debug}
 # export QUEUE=regular
 export WALLTIME=00:05:00
 # PROCS=128
-PROCS=2
-export PPN=2
+PROCS=${PROCS:-2}
+export PPN=${PPN:-2}
 
 # See https://docs.alcf.anl.gov/aurora/running-jobs-aurora/#submitting-a-job
 export TURBINE_DIRECTIVE="#PBS -l filesystems=home:flare"
