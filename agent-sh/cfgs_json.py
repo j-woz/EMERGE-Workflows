@@ -87,9 +87,8 @@ def process(cfg_path, ude_path, output_dir):
                 prefix, key, eq, val, nl = m.groups()
                 _, ext = os.path.splitext(val)
                 new_val = os.path.join(output_dir, stem + ext)
-                output_lines.append(
-                    f"{prefix}{key}{eq}{new_val}"
-                )
+                output_lines.append(f"# {prefix}{key}{eq}{val}\n")
+                output_lines.append(f"{prefix}{key}{eq}{new_val}\n")
             elif m and m.group(2) in frag_keys:
                 if line.startswith("#"):
                     output_lines.append(line)
