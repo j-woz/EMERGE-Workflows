@@ -20,7 +20,7 @@ fi
 # This is used by copy-inputs.sh
 export DIR_INPUTS=${1:A}
 
-export TURBINE_LOG=1
+export TURBINE_LOG=0
 
 set -x
 which mpiexec agent swift-t
