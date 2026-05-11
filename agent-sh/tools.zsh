@@ -6,6 +6,12 @@ DATE_FMT="%D{%Y-%m-%d} %D{%H:%M:%S}"
 PS4='
 + '
 
+abort()
+{
+  msg ${*}
+  exit 1
+}
+
 msg()
 {
   print ${(%)DATE_FMT} ${*}
