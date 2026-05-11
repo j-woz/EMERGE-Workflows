@@ -22,7 +22,7 @@ export PROJECT=EpiCalib
 # Generally, schedulers prefer more nodes, smaller walltime
 export QUEUE=${QUEUE:-debug}
 # export QUEUE=regular
-export WALLTIME=00:05:00
+export WALLTIME=${WALLTIME:-00:20:00}
 # PROCS=128
 PROCS=${PROCS:-2}
 export PPN=${PPN:-2}
