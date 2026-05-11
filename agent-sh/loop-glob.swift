@@ -12,10 +12,8 @@ import sys;
 // import agent_debug;
 import agent;
 
-// The agent inputs are copied into TURBINE_OUTPUT/inputs
-//     when the workflow starts by copy-inputs.sh
 // Find all the input files:
-file inputs[] = glob("runs/*.cfg");
+file inputs[] = glob("*.cfg");
 printf("loop-glob: found inputs: " + size(inputs));
 
 foreach ifile, i in inputs
