@@ -79,7 +79,7 @@ def process(cfg_path, ude_path, output_dir):
         stem = f"{cfg_stem}_{instance}"
         frag_keys = {k for k in fragment if k not in SKIP_KEYS}
         commented_keys = []
-        output_lines = []
+        output_lines = [f"instance = {instance}\n"]
 
         for line in cfg_lines:
             m = re.match(r"^(\s*)([\w.]+)(\s*=\s*)(.*?)(\n?)$", line)
