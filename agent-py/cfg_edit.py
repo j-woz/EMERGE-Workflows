@@ -16,6 +16,7 @@ SKIP_KEYS = {"instance", "replicates"}
 
 VERBOSE = False
 
+
 def main():
     global VERBOSE
     args = parse_args()
@@ -27,6 +28,7 @@ def main():
         key, val = item.split("=", 1)
         params[key] = val
     process(args.template_cfg, args.rundir, args.seed, params, args.input_cfg)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -45,6 +47,7 @@ def parse_args():
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="enable verbose output")
     return parser.parse_args()
+
 
 def process(template_cfg, rundir, seed, params, input_cfg):
     """
@@ -94,14 +97,17 @@ def process(template_cfg, rundir, seed, params, input_cfg):
         f.writelines(output_lines)
     verbose(f"Wrote {input_cfg}")
 
+
 def format_value(v):
     if isinstance(v, list):
         return " ".join(str(x) for x in v)
     return str(v)
 
+
 def verbose(msg):
     if VERBOSE:
         print(msg)
+
 
 if __name__ == "__main__":
     main()
