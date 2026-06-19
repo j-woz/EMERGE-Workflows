@@ -27,7 +27,8 @@ def main():
             raise ValueError(f"param must be key=value: {item}")
         key, val = item.split("=", 1)
         params[key] = val
-    process(args.template_cfg, args.rundir, args.seed, params, args.input_cfg)
+    process(args.template_cfg, args.rundir, args.seed, params,
+            args.input_cfg)
 
 
 def parse_args():
@@ -67,6 +68,8 @@ def process(template_cfg, rundir, seed, params, input_cfg):
     applied_keys = set()
 
     for line in template_lines:
+        if line.startswith(" "):
+            line = line.lstrip()
         if line.startswith("#"):
             output_lines.append(line)
             continue
@@ -83,7 +86,8 @@ def process(template_cfg, rundir, seed, params, input_cfg):
         elif key in K:
             output_lines.append("# " + line if line.endswith("\n")
                                 else "# " + line + "\n")
-            output_lines.append(f"{prefix}{key}{eq}{format_value(params[key])}\n")
+            new_val = format_value(params[key])
+            output_lines.append(f"{prefix}{key}{eq}{new_val}\n")
             applied_keys.add(key)
         else:
             output_lines.append(line)
