@@ -16,6 +16,36 @@ SKIP_KEYS = {"instance", "replicates"}
 
 VERBOSE = False
 
+def main():
+    global VERBOSE
+    args = parse_args()
+    VERBOSE = args.verbose
+    params = {}
+    for item in args.param:
+        if "=" not in item:
+            raise ValueError(f"param must be key=value: {item}")
+        key, val = item.split("=", 1)
+        params[key] = val
+    process(args.template_cfg, args.rundir, args.seed, params, args.input_cfg)
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Generate a cfg file from a template")
+    parser.add_argument("template_cfg",
+                        help="original cfg on disk")
+    parser.add_argument("input_cfg",
+                        help="ExaEpi input file to generate")
+    parser.add_argument("rundir",
+                        help="directory in which ExaEpi should run")
+    parser.add_argument("-s", "--seed", type=int, default=0,
+                        help="int seed")
+    parser.add_argument("-p", "--param", action="append", default=[],
+                        metavar="KEY=VALUE",
+                        help="parameter to modify (repeatable)")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="enable verbose output")
+    return parser.parse_args()
+
 def process(template_cfg, rundir, seed, params, input_cfg):
     """
     template_cfg: original cfg on disk
@@ -30,28 +60,39 @@ def process(template_cfg, rundir, seed, params, input_cfg):
     with open(template_cfg) as f:
         template_lines = f.readlines()
 
+    output_lines = []
+    applied_keys = set()
+
     for line in template_lines:
         if line.startswith("#"):
             output_lines.append(line)
+            continue
         m = re.match(r"^(\s*)([\w.]+)(\s*=\s*)(.*?)(\n?)$", line)
-        if m is None: continue
-        key = m.group(2)
+        if m is None:
+            output_lines.append(line)
+            continue
+        prefix, key, eq, val, nl = m.groups()
         if key == "diag.output_filename":
-            prefix, key, eq, val, nl = m.groups()
             _, ext = os.path.splitext(val)
-            new_val = output_dir, stem + ext)
+            new_val = os.path.join(rundir, os.path.basename(val))
             output_lines.append(f"# {prefix}{key}{eq}{val}\n")
             output_lines.append(f"{prefix}{key}{eq}{new_val}\n")
         elif key in K:
-            output_lines.append("# " + line)
-            commented_keys.append(m.group(2))
+            output_lines.append("# " + line if line.endswith("\n")
+                                else "# " + line + "\n")
+            output_lines.append(f"{prefix}{key}{eq}{format_value(params[key])}\n")
+            applied_keys.add(key)
         else:
             output_lines.append(line)
 
+    # Append any params that were not present in the template.
+    for key in K:
+        if key not in applied_keys:
+            output_lines.append(f"{key} = {format_value(params[key])}\n")
 
     with open(input_cfg, "w") as f:
         f.writelines(output_lines)
-    verbose(f"Wrote {out_path}")
+    verbose(f"Wrote {input_cfg}")
 
 def format_value(v):
     if isinstance(v, list):
