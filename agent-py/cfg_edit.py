@@ -50,16 +50,17 @@ def parse_args():
     return parser.parse_args()
 
 
-def process(template_cfg, rundir, seed, params, input_cfg):
+def process(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg):
     """
     template_cfg: original cfg on disk
     rundir:       directory in which ExaEpi should run and write data
     seed:         int seed
-    params:       dict of other parameters to modify
+    params:       dict of other parameters to modify (in string form)
     input_cfg:    ExaEpi input file generated here.
     """
 
-    K = params.keys()
+    P = eval(params)
+    K = P.keys()
 
     with open(template_cfg) as f:
         template_lines = f.readlines()
@@ -78,7 +79,18 @@ def process(template_cfg, rundir, seed, params, input_cfg):
             output_lines.append(line)
             continue
         prefix, key, eq, val, nl = m.groups()
-        if key == "diag.output_filename":
+        if key == "agent.seed":
+            output_lines.append(f"# {prefix}{key}{eq}{val}\n")
+            output_lines.append(f"{prefix}{key}{eq}{seed}\n")
+        elif key == "agent.urbanpop_filename":
+            new_val = os.path.join(rundir, urbanpop)
+            output_lines.append(f"# {prefix}{key}{eq}{val}\n")
+            output_lines.append(f"{prefix}{key}{eq}{new_val}\n")
+        elif key == "disease.case_filename":
+            new_val = os.path.join(rundir, cases)
+            output_lines.append(f"# {prefix}{key}{eq}{val}\n")
+            output_lines.append(f"{prefix}{key}{eq}{new_val}\n")
+        elif key == "diag.output_filename":
             _, ext = os.path.splitext(val)
             new_val = os.path.join(rundir, os.path.basename(val))
             output_lines.append(f"# {prefix}{key}{eq}{val}\n")
@@ -99,7 +111,7 @@ def process(template_cfg, rundir, seed, params, input_cfg):
 
     with open(input_cfg, "w") as f:
         f.writelines(output_lines)
-    verbose(f"Wrote {input_cfg}")
+    verbose(f"cfg_edit: wrote {input_cfg}")
 
 
 def format_value(v):
