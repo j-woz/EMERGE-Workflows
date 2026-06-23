@@ -3,7 +3,9 @@
 
 = Agent Workflow via Python Invocation (agent-py)
 
-This directory contains Python utilities for running the ExaEpi `agent`.
+The idea here is to support running 1M or more ExaEpi runs in a single workflow.
+
+This directory contains a workflow and Python features for running the ExaEpi `agent`.
 
 == Support
 
@@ -11,11 +13,13 @@ Please file issues on this repo with any problems, questions, or documentation c
 
 == Overview
 
-The Python modules in this directory provide programmatic interfaces to:
+The Swift/T workflow and Python modules in this directory:
 
 * Generate and modify ExaEpi configuration files in local storage
 * Execute ExaEpi agent runs with custom parameters in local storage
-* Efficiently log and retrieve results from agent executions in the shared filesystem.
+* Efficiently log to and retrieve results from agent executions in the shared filesystem.
+** All result parameters are inserted into a single log, formatted as JSON strings.
+** A single Swift/T worker funnels all output values into this log.
 
 === Modules
 
@@ -74,7 +78,7 @@ python result_log.py <filename> [idx ...]
 
 You can also extract this data with `dd bs=1K skip=N count=M ...` and `tr`.
 
-== Typical Workflow
+== Python layer
 
 . Configure a template ExaEpi input file
 . Call `exaepi_agent.run()` with parameters:
@@ -85,15 +89,7 @@ You can also extract this data with `dd bs=1K skip=N count=M ...` and `tr`.
 . ExaEpi agent executes via `mpiexec`
 . Results are collected and returned
 
-== Integration
-
-These modules are typically called from:
-
-* Swift/T workflows (via Python bindings)
-* Direct Python scripts for parameter sweeps
-* Batch job systems via shell wrappers
-
-=== Swift/T Workflow Integration (loop-local.swift)
+== Swift/T Workflow: `loop-local.swift`
 
 The main workflow entry point is `loop-local.swift`, which orchestrates multiple agent runs:
 
@@ -129,4 +125,4 @@ The workflow:
 . Logs each result via `result_log()` to a binary result file
 . Results are stored in 1024-byte blocks indexed by run number
 
-The `result_log()` function in the Swift workflow calls Python's `result_log.do_write()` to persist results to disk using the dedicated last worker process (rank n-1).
+The `result_log()` function in the Swift workflow calls the Python `result_log.do_write()` to persist results to disk using the dedicated last worker process (rank _n-1_, accessed via the Swift/T `@location` syntax).
