@@ -1,6 +1,7 @@
 
 import python;
 
+/** Swift/T interface for Python layer call to ExaEpi agent */
 (string result)
 agent(int idx, string input_cfg, int seed, string urbanpop, string cases,
       string params)

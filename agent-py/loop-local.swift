@@ -13,9 +13,9 @@ import random;
 import string;
 import sys;
 
-// import agent_debug;
 import agent;
 
+// Argument processing:
 string template_cfg = argp(1);
 int    total        = string2int(argp(2));
 string urbanpop     = argp(3);
@@ -27,6 +27,7 @@ string p = "{}";
 
 assert(turbine_workers() > 1, "need at least 2 workers!");
 
+// RL: The rank for the Result Log
 location RL = locationFromRank(turbine_workers()-1);
 
 result_log(string filename, string record)
@@ -38,13 +39,10 @@ result_log(string filename, string record)
 
 foreach idx in [0:total-1]
 {
+  // Could do additional things with parameter specification here,
+  // just picking a seed for now:
   int seed = randint(0, 10*1000*1000);
   result = agent(idx, template_cfg, seed, urbanpop, cases, p);
   printf("result: '%s'", result);
   result_log(result_file, result);
 }
-
-
-
-/* json_encode_object(["agent.urbanpop_filename"],
-                               "urbanpop_nm.bin"); */

@@ -12,6 +12,7 @@ def run(idx, template_cfg, seed, urbanpop, cases, params):
     seed:      int random seed
     urbanpop:  string of urbanpop basename, assumed to be in workdir
     params:    dict of other parameters to modify
+    return:    string of JSON containing key output values
     """
 
     user      = os.getenv("USER")
@@ -23,6 +24,7 @@ def run(idx, template_cfg, seed, urbanpop, cases, params):
     agent_out = f"{rundir}/agent.out"
 
     os.makedirs(rundir, exist_ok=True)
+
     try:
         cfg_edit.process(template_cfg, rundir, seed,
                          f"{workdir}/{urbanpop}",
@@ -39,9 +41,13 @@ def run(idx, template_cfg, seed, urbanpop, cases, params):
 
     run_exaepi(workdir, rundir, input_cfg, agent_out)
 
+    # result: dict of JSON
     result = get_results(agent_out)
+    # Add some additional metadata:
     result["idx"]  = idx
     result["seed"] = seed
+
+    # Convert dict of JSON to string for Swift/T:
     return str(result)
 
 
@@ -61,6 +67,7 @@ def run_exaepi(workdir, rundir, input_cfg, agent_out):
 
 
 def get_results(agent_out):
+    """ Read ExaEpi agent output and stuff into a JSON string """
     day_final = 0
     infecteds = []
     deaths    = []
