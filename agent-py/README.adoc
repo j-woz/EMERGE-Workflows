@@ -1,0 +1,128 @@
+
+:toc:
+
+= Agent Workflow via Python Invocation (agent-py)
+
+This directory contains Python utilities for running the ExaEpi `agent`.
+
+== Support
+
+Please file issues on this repo with any problems, questions, or documentation clarification ideas.
+
+== Overview
+
+The Python modules in this directory provide programmatic interfaces to:
+
+* Generate and modify ExaEpi configuration files
+* Execute ExaEpi agent runs with custom parameters
+* Log and retrieve results from agent executions
+
+=== Modules
+
+==== exaepi_agent.py
+
+Main interface for running ExaEpi agent instances.
+
+* `run(idx, template_cfg, seed, urbanpop, cases, params)` - Execute a single agent run
+** `idx` - integer index for the run
+** `template_cfg` - path to the original configuration file
+** `seed` - random seed value
+** `urbanpop` - basename of urbanpop file (assumed in workdir)
+** `cases` - cases file reference
+** `params` - dictionary of additional parameters to modify
+** Returns: string representation of result dictionary with `idx` and `seed`
+
+* Supporting:
+** `run_exaepi()` - Spawns the ExaEpi agent using `mpiexec`
+** `get_results()` - Parses results from agent output
+
+==== cfg_edit.py
+
+Utility for generating ExaEpi configuration files from templates.
+
+* `process()` - Generate a modified configuration file with custom parameters
+* Modifies template configuration with provided parameter values
+* Handles JSON-based configuration editing
+* Supports key=value parameter format
+* Supports command-line use for debugging:
+
+Usage:
+[source,bash]
+----
+python cfg_edit.py <template_cfg> <input_cfg> <rundir> [options]
+  -s, --seed       int seed (default: 0)
+  -p, --param      parameter to modify as KEY=VALUE (repeatable)
+  -v, --verbose    enable verbose output
+----
+
+==== result_log.py
+
+Manages result logging for agent executions using 1024-byte blocks.
+
+* `do_open_write()` - Open log file in write mode
+* `do_open_read()` - Open log file in read mode
+* `do_write()` - Write a result record (encoded as UTF-8 to 1024-byte block)
+* `extract()` - Retrieve result from specific block index
+
+Usage:
+[source,bash]
+----
+python result_log.py <filename> [idx ...]
+----
+
+== Typical Workflow
+
+. Configure a template ExaEpi input file
+. Call `exaepi_agent.run()` with parameters:
+   * Random seed and other sweep parameters
+   * Path to template configuration
+   * References to data files
+. Configuration is generated via `cfg_edit.py`
+. ExaEpi agent executes via `mpiexec`
+. Results are collected and returned
+
+== Integration
+
+These modules are typically called from:
+
+* Swift/T workflows (via Python bindings)
+* Direct Python scripts for parameter sweeps
+* Batch job systems via shell wrappers
+
+=== Swift/T Workflow Integration (loop-local.swift)
+
+The main workflow entry point is `loop-local.swift`, which orchestrates multiple agent runs:
+
+[source,swift]
+----
+import agent;  // imports the Python modules
+
+// Command-line arguments:
+// 1: template_cfg - path to ExaEpi configuration template
+// 2: total - number of runs to execute
+// 3: urbanpop - urbanpop data file basename
+// 4: cases - cases data file
+// 5: result_file - output file for results
+
+foreach idx in [0:total-1]
+{
+  int seed = randint(0, 10*1000*1000);
+  result = agent(idx, template_cfg, seed, urbanpop, cases, p);
+  result_log(result_file, result);
+}
+----
+
+The workflow:
+
+. Iterates over `total` run indices
+. Generates a random seed for each iteration
+. Calls `agent()` (mapped to Python's `exaepi_agent.run()`) with:
+  ** Run index
+  ** Template configuration file
+  ** Random seed
+  ** Data file references
+  ** Parameter dictionary for anything additional (currently empty)
+. Logs each result via `result_log()` to a binary result file
+. Results are stored in 1024-byte blocks indexed by run number
+
+The `result_log()` function in the Swift workflow calls Python's `result_log.do_write()` to persist results to disk using the dedicated last worker process (rank n-1).
