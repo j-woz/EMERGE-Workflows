@@ -13,9 +13,9 @@ Please file issues on this repo with any problems, questions, or documentation c
 
 The Python modules in this directory provide programmatic interfaces to:
 
-* Generate and modify ExaEpi configuration files
-* Execute ExaEpi agent runs with custom parameters
-* Log and retrieve results from agent executions
+* Generate and modify ExaEpi configuration files in local storage
+* Execute ExaEpi agent runs with custom parameters in local storage
+* Efficiently log and retrieve results from agent executions in the shared filesystem.
 
 === Modules
 
@@ -57,18 +57,22 @@ python cfg_edit.py <template_cfg> <input_cfg> <rundir> [options]
 
 ==== result_log.py
 
-Manages result logging for agent executions using 1024-byte blocks.
+Manages result logging for agent executions by stuffing Python strings into 1024-byte NUL-padded blocks.
 
 * `do_open_write()` - Open log file in write mode
 * `do_open_read()` - Open log file in read mode
 * `do_write()` - Write a result record (encoded as UTF-8 to 1024-byte block)
 * `extract()` - Retrieve result from specific block index
 
+Also provides a command-line interface for interactive extraction:
+
 Usage:
 [source,bash]
 ----
 python result_log.py <filename> [idx ...]
 ----
+
+You can also extract this data with `dd bs=1K skip=N count=M ...` and `tr`.
 
 == Typical Workflow
 
