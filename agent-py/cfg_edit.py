@@ -50,7 +50,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def process(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg):
+def process_parse(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg):
     """
     template_cfg: original cfg on disk
     rundir:       directory in which ExaEpi should run and write data
@@ -61,6 +61,20 @@ def process(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg):
     """
 
     P = eval(params)
+    return process(template_cfg, rundir, seed, urbanpop, cases, P,
+                   input_cfg)
+
+
+def process(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg):
+    """
+    template_cfg: original cfg on disk
+    rundir:       directory in which ExaEpi should run and write data
+    seed:         int seed
+    params:       dict of other parameters to modify
+    input_cfg:    ExaEpi input file generated here.
+    returns:      The id number from the cfg
+    """
+
     K = P.keys()
 
     with open(template_cfg) as f:
@@ -119,6 +133,24 @@ def process(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg):
     verbose(f"cfg_edit: wrote {input_cfg}")
 
     return result_id
+
+
+csv_fp = None
+csv_fields = None
+
+
+def csv_open(filename):
+    global csv_fp, csv_fields
+    csv_fp = open(filename, 'r')
+    csv_fields = csv_fp.readline().strip()
+
+
+def csv_get(filename):
+    global csv_fp, csv_fields
+    if csv_fp is None: csv_open(filename)
+    line = csv_fp.readline().strip()
+    result = csv_fields + '\n' + line
+    return result
 
 
 def format_value(v):
