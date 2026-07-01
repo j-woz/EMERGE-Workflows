@@ -57,6 +57,7 @@ def process(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg):
     seed:         int seed
     params:       dict of other parameters to modify (in string form)
     input_cfg:    ExaEpi input file generated here.
+    returns:      The id number from the cfg
     """
 
     P = eval(params)
@@ -67,6 +68,8 @@ def process(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg):
 
     output_lines = []
     applied_keys = set()
+
+    result_id = None
 
     for line in template_lines:
         if line.startswith(" "):
@@ -79,7 +82,9 @@ def process(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg):
             output_lines.append(line)
             continue
         prefix, key, eq, val, nl = m.groups()
-        if key == "agent.seed":
+        if key == "id":
+            result_id = val
+        elif key == "agent.seed":
             output_lines.append(f"# {prefix}{key}{eq}{val}\n")
             output_lines.append(f"{prefix}{key}{eq}{seed}\n")
         elif key == "agent.urbanpop_filename":
@@ -112,6 +117,8 @@ def process(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg):
     with open(input_cfg, "w") as f:
         f.writelines(output_lines)
     verbose(f"cfg_edit: wrote {input_cfg}")
+
+    return result_id
 
 
 def format_value(v):
