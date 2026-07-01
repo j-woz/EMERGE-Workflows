@@ -21,81 +21,44 @@ The Swift/T workflow and Python modules in this directory:
 ** All result parameters are inserted into a single log, formatted as JSON strings.
 ** A single Swift/T worker funnels all output values into this log.
 
-=== Modules
+== Quick start
 
-==== exaepi_agent.py
-
-Main interface for running ExaEpi agent instances.
-
-* `run(idx, template_cfg, seed, urbanpop, cases, params)` - Execute a single agent run
-** `idx` - integer index for the run
-** `template_cfg` - path to the original configuration file
-** `seed` - random seed value
-** `urbanpop` - basename of urbanpop file (assumed in workdir)
-** `cases` - cases file reference
-** `params` - dictionary of additional parameters to modify
-** Returns: string representation of result dictionary with `idx` and `seed`
-
-* Supporting:
-** `run_exaepi()` - Spawns the ExaEpi agent using `mpiexec`
-** `get_results()` - Parses results from agent output
-
-==== cfg_edit.py
-
-Utility for generating ExaEpi configuration files from templates.
-
-* `process()` - Generate a modified configuration file with custom parameters
-* Modifies template configuration with provided parameter values
-* Handles JSON-based configuration editing
-* Supports key=value parameter format
-* Supports command-line use for debugging:
-
-Usage:
-[source,bash]
 ----
-python cfg_edit.py <template_cfg> <input_cfg> <rundir> [options]
-  -s, --seed       int seed (default: 0)
-  -p, --param      parameter to modify as KEY=VALUE (repeatable)
-  -v, --verbose    enable verbose output
+$ swift-t -n $PROCS loop-local.swift template.cfg $N $POP $CASES results.log
 ----
 
-==== result_log.py
+where:
 
-Manages result logging for agent executions by stuffing Python strings into 1024-byte NUL-padded blocks.
+* `PROCS`: the process count
+* `template.cfg`: the template cfg file which will be edited for each `agent` run
+* `POP`: the population data file
+* `CASES`: the cases data file
+* `results.log`: the output results file
 
-* `do_open_write()` - Open log file in write mode
-* `do_open_read()` - Open log file in read mode
-* `do_write()` - Write a result record (encoded as UTF-8 to 1024-byte block)
-* `extract()` - Retrieve result from specific block index
+The `loop-local.swift` calls into the Python libraries below to run the ExaEpi `agent` and perform I/O.
 
-Also provides a command-line interface for interactive extraction:
+The format of `results.log` is a list of 1024-byte blocks, each of which contains a NUL-padded JSON string that contains the result data, e.g.:
 
-Usage:
-[source,bash]
+[source,json]
 ----
-python result_log.py <filename> [idx ...]
+{
+  'day_final': 113,
+  'id': '2',
+  'seed': 0,
+  'infected': [21, 23, 30, ..., 15664],
+  'deaths': [0, 0, ..., 352, 365]
+}
 ----
 
-You can also extract this data with `dd bs=1K skip=N count=M ...` and `tr`.
-
-== Python layer
-
-. Configure a template ExaEpi input file
-. Call `exaepi_agent.run()` with parameters:
-   * Random seed and other sweep parameters
-   * Path to template configuration
-   * References to data files
-. Configuration is generated via `cfg_edit.py`
-. ExaEpi agent executes via `mpiexec`
-. Results are collected and returned
+See below for how this file is written and how to extract JSON fragments from it.
 
 == Swift/T Workflow: `loop-local.swift`
 
-The main workflow entry point is `loop-local.swift`, which orchestrates multiple agent runs:
+The main workflow entry point is `loop-local.swift`, which orchestrates multiple agent runs, each with a different random `seed`:
 
-[source,swift]
+[source,c]
 ----
-import agent;  // imports the Python modules
+import agent;  // imports the ExaEpi agent API
 
 // Command-line arguments:
 // 1: template_cfg - path to ExaEpi configuration template
@@ -126,3 +89,73 @@ The workflow:
 . Results are stored in 1024-byte blocks indexed by run number
 
 The `result_log()` function in the Swift workflow calls the Python `result_log.do_write()` to persist results to disk using the dedicated last worker process (rank _n-1_, accessed via the Swift/T `@location` syntax).
+
+== Python layer: `exaepi_agent.py`
+
+. Configure a template ExaEpi input file
+. Call `exaepi_agent.run()` with parameters:
+   * Random seed and other sweep parameters
+   * Path to template configuration
+   * References to data files
+. Configuration is generated via `cfg_edit.py`
+. ExaEpi agent executes via `mpiexec`
+. Results are collected and returned
+
+== Underlying Python modules
+
+=== exaepi_agent.py
+
+Main interface for running ExaEpi agent instances.
+
+* `run(idx, template_cfg, seed, urbanpop, cases, params)` - Execute a single agent run
+** `idx` - integer index for the run
+** `template_cfg` - path to the original configuration file
+** `seed` - random seed value
+** `urbanpop` - basename of urbanpop file (assumed in workdir)
+** `cases` - cases file reference
+** `params` - dictionary of additional parameters to modify
+** Returns: string representation of result dictionary with `idx` and `seed`
+
+* Supporting:
+** `run_exaepi()` - Spawns the ExaEpi agent using `mpiexec`
+** `get_results()` - Parses results from agent output
+
+=== cfg_edit.py
+
+Utility for generating ExaEpi configuration files from templates.
+Used as a library from the workflow.
+
+* `process()` - Generate a modified configuration file with custom parameters
+* Modifies template configuration with provided parameter values
+* Handles JSON-based configuration editing
+* Supports key=value parameter format
+* Supports command-line use for debugging:
+
+Usage:
+[source,bash]
+----
+python cfg_edit.py <template_cfg> <input_cfg> <rundir> [options]
+  -s, --seed       int seed (default: 0)
+  -p, --param      parameter to modify as KEY=VALUE (repeatable)
+  -v, --verbose    enable verbose output
+----
+
+=== result_log.py
+
+Manages result logging for agent executions by stuffing Python strings into 1024-byte NUL-padded blocks.
+Used as a library from the workflow.
+
+* `do_open_write()` - Open log file in write mode
+* `do_open_read()` - Open log file in read mode
+* `do_write()` - Write a result record (encoded as UTF-8 to 1024-byte block)
+* `extract()` - Retrieve result from specific block index
+
+Also provides a command-line interface for interactive extraction:
+
+Usage:
+[source,bash]
+----
+python result_log.py <filename> [idx ...]
+----
+
+You can also extract this data with `dd bs=1K skip=N count=M ...` and `tr`.
