@@ -3,6 +3,7 @@
 scratch/
 # agent outputs:
 Backtrace*
+README.html
 # Swift/T TIC files:
 *.tic
 # Data
