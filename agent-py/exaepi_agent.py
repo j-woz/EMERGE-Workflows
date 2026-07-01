@@ -6,7 +6,7 @@ import cfg_edit
 
 def run(idx, template_cfg, seed, urbanpop, cases, params):
     """
-    Runs ExaEpi agent in local rundir
+    Runs ExaEpi agent in local rundir and extract data
     idx:       int index
     input_cfg: string filename of original cfg (usually in /tmp)
     seed:      int random seed
@@ -23,13 +23,16 @@ def run(idx, template_cfg, seed, urbanpop, cases, params):
     # stdout/stderr from ExaEpi agent:
     agent_out = f"{rundir}/agent.out"
 
+    print("exaepi_agent: template_cfg: " + template_cfg, flush=True)
+    print("exaepi_agent: input_cfg:    " + input_cfg, flush=True)
+
     os.makedirs(rundir, exist_ok=True)
 
     try:
-        cfg_edit.process(template_cfg, rundir, seed,
-                         f"{workdir}/{urbanpop}",
-                         f"{workdir}/{cases}",
-                         params, input_cfg)
+        cfg_id = cfg_edit.process(template_cfg, rundir, seed,
+                                  f"{workdir}/{urbanpop}",
+                                  f"{workdir}/{cases}",
+                                  params, input_cfg)
     except Exception as e:
         print("exaepi_agent.run(): Exception in cfg_edit!")
         print("exaepi_agent.run(): " + str(e))
@@ -44,8 +47,9 @@ def run(idx, template_cfg, seed, urbanpop, cases, params):
     # result: dict of JSON
     result = get_results(agent_out)
     # Add some additional metadata:
-    result["idx"]  = idx
-    result["seed"] = seed
+    result["idx"]    = idx
+    result["cfg_id"] = cfg_id
+    result["seed"]   = seed
 
     # Convert dict of JSON to string for Swift/T:
     return str(result)
