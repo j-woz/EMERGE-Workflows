@@ -2,6 +2,8 @@
 
 """ File pointer open in binary mode for NUL characters """
 
+BLOCK_SIZE = 4 * 1024
+
 fp = None
 
 def main():
@@ -34,9 +36,9 @@ def do_open_read(filename):
 
 def do_write(filename, record):
     global fp
-    if fp == None: do_open_r(filename)
+    if fp == None: do_open_write(filename)
     print("result_log: write: '%s'" % filename, flush=True)
-    B = bytearray(1024)
+    B = bytearray(BLOCK_SIZE)
     B[:len(record)] = record.encode("utf-8")
     fp.write(B)
     fp.flush()
@@ -45,10 +47,10 @@ def do_write(filename, record):
 
 
 def extract(filename, idx):
-    """ Seek to the idx-th 1024-byte block and return its string. """
+    """ Seek to the idx-th BLOCK_SIZE-byte block and return its string. """
     with open(filename, "rb") as f:
-        f.seek(idx * 1024)
-        B = f.read(1024)
+        f.seek(idx * BLOCK_SIZE)
+        B = f.read(BLOCK_SIZE)
     return B.rstrip(b"\x00").decode("utf-8")
 
 
