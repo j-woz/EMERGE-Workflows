@@ -148,7 +148,9 @@ def csv_open(filename):
 def csv_get(filename):
     global csv_fp, csv_fields
     if csv_fp is None: csv_open(filename)
-    line = csv_fp.readline().strip()
+    line = csv_fp.readline()
+    if len(line) == 0: return "EOF"
+    line = line.strip()
     result = csv_fields + '\n' + line
     return result
 

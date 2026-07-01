@@ -54,6 +54,35 @@ def run(idx, template_cfg, seed, urbanpop, cases, params):
     # Convert dict of JSON to string for Swift/T:
     return str(result)
 
+def run_csv_line(idx, template_cfg, seed, urbanpop, cases, lines):
+    """
+    Runs ExaEpi agent in local rundir and extract data
+    idx:       int index
+    input_cfg: string filename of original cfg (usually in /tmp)
+    seed:      int random seed
+    urbanpop:  string of urbanpop basename, assumed to be in workdir
+    params:    CSV lines of parameters to modify
+    return:    string of JSON containing key output values
+    """
+
+    params = lines2params(lines)
+    return run(params)
+
+def lines2params(lines):
+    """
+    Parse the CSV lines into a dict
+    lines: 2 lines separated by NL, a CSV header and the CSV data
+    """
+    pair = lines.split('\n')
+    assert(len(pair) == 2)
+    headers = pair[0].split(',')
+    values  = pair[1].split(',')
+    assert(len(headers) == len(values))
+    params = {}
+    for header, i in headers:
+        params[header] = values[i]
+    return params
+
 
 def run_exaepi(workdir, rundir, input_cfg, agent_out):
     import subprocess
@@ -91,3 +120,6 @@ def get_results(agent_out):
     return {"day_final": day_final,
             "infected" : infecteds,
             "deaths"   : deaths}
+
+
+def run_fake(idx, template_cfg, seed, urbanpop, cases, params):
