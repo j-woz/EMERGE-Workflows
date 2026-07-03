@@ -58,13 +58,13 @@ run_recursive(string csv_file, location CSV_GET, int level)
   }
   else
   {
-    r = run_replicates(csv_file, CSV_GET, level, csv_lines) +
+    r = run_replicates(CSV_GET, level, csv_lines) +
         run_recursive (csv_file, CSV_GET, level + 1);
   }
 }
 
 (int r)
-run_replicates(string csv_file, location CSV_GET,
+run_replicates(location CSV_GET,
                int level, string csv_lines)
 {
   int A[];
