@@ -67,6 +67,10 @@ def process_parse(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg
 
 def process(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg):
     """
+    Edits the template_cfg creating the input_cfg for ExaEpi
+    Always edits: seed, file locations
+    Also edits:   anything in the given params
+
     template_cfg: original cfg on disk
     rundir:       directory in which ExaEpi should run and write data
     seed:         int seed
@@ -75,12 +79,15 @@ def process(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg):
     returns:      The id number from the cfg
     """
 
-    K = P.keys()
+    # Keys targeted for editing:
+    key_targets = params.keys()
 
     with open(template_cfg) as f:
         template_lines = f.readlines()
 
+    # Contents to write to input_cfg:
     output_lines = []
+    # Keep track of what we have edited so far:
     applied_keys = set()
 
     result_id = None
@@ -114,20 +121,31 @@ def process(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg):
             new_val = os.path.join(rundir, os.path.basename(val))
             output_lines.append(f"# {prefix}{key}{eq}{val}\n")
             output_lines.append(f"{prefix}{key}{eq}{new_val}\n")
-        elif key in K:
+        elif key in key_targets:
+            verbose("edit target: " + key)
             output_lines.append("# " + line if line.endswith("\n")
                                 else "# " + line + "\n")
-            new_val = format_value(params[key])
+            new_val = params[key]
+            if key in ("disease.hospitalization_days_alpha",
+                       "disease.hospitalization_days_beta"):
+                verbose("  and double")
+                # Duplicate these lists
+                new_val = eval(new_val)
+                new_val += new_val
+
+            new_val = format_value(new_val)
+
             output_lines.append(f"{prefix}{key}{eq}{new_val}\n")
             applied_keys.add(key)
         else:
             output_lines.append(line)
 
-    # Append any params that were not present in the template.
-    for key in K:
+    # Append any params that were not present in the template:
+    for key in key_targets:
         if key not in applied_keys:
             output_lines.append(f"{key} = {format_value(params[key])}\n")
 
+    # Write the new ExaEpi input file!
     with open(input_cfg, "w") as f:
         f.writelines(output_lines)
     verbose(f"cfg_edit: wrote {input_cfg}")
@@ -135,17 +153,20 @@ def process(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg):
     return result_id
 
 
+csv_id = 0
 csv_fp = None
 csv_fields = None
 
 
 def csv_open(filename):
+    """ Open CSV and load field names from header """
     global csv_fp, csv_fields
     csv_fp = open(filename, 'r')
     csv_fields = csv_fp.readline().strip()
 
 
 def csv_get(filename):
+    """ Return next row from CSV """
     global csv_fp, csv_fields
     if csv_fp is None: csv_open(filename)
     line = csv_fp.readline()
@@ -156,6 +177,7 @@ def csv_get(filename):
 
 
 def format_value(v):
+    """ Format any lists for ExaEpi cfg file syntax """
     if isinstance(v, list):
         return " ".join(str(x) for x in v)
     return str(v)

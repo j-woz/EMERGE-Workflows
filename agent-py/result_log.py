@@ -24,20 +24,20 @@ def parse_args():
 
 def do_open_write(filename):
     global fp
-    print("result_log: open:  '%s'" % filename, flush=True)
+    # print("result_log: open:  '%s'" % filename, flush=True)
     fp = open(filename, "wb")
 
 
 def do_open_read(filename):
     global fp
-    print("result_log: open:  '%s'" % filename, flush=True)
+    # print("result_log: open:  '%s'" % filename, flush=True)
     fp = open(filename, "rb")
 
 
 def do_write(filename, record):
     global fp
     if fp == None: do_open_write(filename)
-    print("result_log: write: '%s'" % filename, flush=True)
+    # print("result_log: write: '%s'" % filename, flush=True)
     B = bytearray(BLOCK_SIZE)
     B[:len(record)] = record.encode("utf-8")
     fp.write(B)

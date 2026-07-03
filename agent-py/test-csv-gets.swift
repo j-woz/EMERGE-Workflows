@@ -14,7 +14,7 @@ string csv_file = argp(1);
 
 printf("csv_file: " + csv_file);
 
-// RL: The rank for the csv_get operations
+// CSV_GET: The rank for the csv_get operations
 location CSV_GET = locationFromRank(turbine_workers()-1);
 
 (int r)
