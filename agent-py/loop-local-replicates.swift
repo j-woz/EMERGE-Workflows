@@ -50,7 +50,7 @@ location CSV_GET = locationFromRank(turbine_workers()-2);
 run_recursive(string csv_file, location CSV_GET, int level)
 {
   string csv_lines = csv_get1(csv_file, CSV_GET);
-  printf("csv_lines: " + csv_lines);
+  // printf("csv_lines: " + csv_lines);
 
   if (csv_lines == "EOF")
   {

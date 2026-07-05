@@ -56,6 +56,14 @@ def run(idx, template_cfg, seed, urbanpop, cases, params):
                               f"{workdir}/{cases}",
                               params, input_cfg)
 
+    print("PATH: " + os.getenv("PATH"))
+
+    L = os.listdir("/tmp/wozniak/exaepi")
+    print("TMP: " + str(L))
+
+    L = os.listdir(rundir)
+    print("RUNDIR: " + str(L))
+
     run_exaepi(workdir, rundir, input_cfg, agent_out)
 
     # result: dict of JSON
@@ -144,14 +152,35 @@ def lines2params(lines):
     return params
 
 
+chmod = False
+
+
 def run_exaepi(workdir, rundir, input_cfg, agent_out):
     import subprocess
-    cmd = ["mpiexec", workdir + "/agent", input_cfg]
+    agent = workdir + "/agent"
+    global chmod
+    if not chmod:
+        os.chmod(agent, 0o755)
+        chmod = True
+    cmd = ["mpiexec", "affinity.sh", agent, input_cfg]
+    print("cmd: " + str(cmd), flush=True)
+
+    environment = os.environ.copy()
+    del environment["PMIX_NAMESPACE"]
+    environment["PMIX_MCA_psec"] = "none"
+    environment["RANK"] = os.getenv("ADLB_RANK_SELF")
+
     with open(agent_out, "w") as fp:
         child = subprocess.run(cmd,
                                cwd = rundir,
-                               stdout=fp,
-                               stderr=subprocess.STDOUT)
+                               env = environment
+                               # stdout=fp,
+                               # stderr=subprocess.STDOUT
+                               )
+    check_child(child)
+
+
+def check_child(child):
     if child.returncode != 0:
         print("exaepi_agent.run_exaepi(): agent exit code: %i" %
               child.returncode,
