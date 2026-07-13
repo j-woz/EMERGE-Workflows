@@ -2,24 +2,81 @@
 
 """ File pointer open in binary mode for NUL characters """
 
+import json
+
+from datetime import datetime
+
 BLOCK_SIZE = 4 * 1024
 
 fp = None
 
 def main():
-    filename, indices = parse_args()
-    for idx in indices:
-        print("%i: %s" % (idx, extract(filename, idx)))
+    args = parse_args()
+    args.func(args)
 
 
 def parse_args():
-    import sys
-    if len(sys.argv) < 3:
-        print("usage: result_log.py <filename> [idx ...]")
-        sys.exit(1)
-    filename = sys.argv[1]
-    indices = [int(a) for a in sys.argv[2:]]
-    return filename, indices
+    import argparse
+    parser = argparse.ArgumentParser(description="Result log utilities")
+    subparsers = parser.add_subparsers(dest="command", help="Command to run")
+    subparsers.required = True
+
+    extract_parser = subparsers.add_parser("extract",
+                                           help="Extract records by index")
+    extract_parser.add_argument("filename", help="Result log file")
+    extract_parser.add_argument("indices", nargs="+", type=int,
+                                help="Record indices to extract")
+    extract_parser.set_defaults(func=cmd_extract)
+
+    timing_parser = subparsers.add_parser("timing",
+                                          help="Analyze timing statistics")
+    timing_parser.add_argument("logfile", help="Results log file to analyze")
+    timing_parser.set_defaults(func=cmd_timing)
+
+    return parser.parse_args()
+
+
+def cmd_extract(args):
+    for idx in args.indices:
+        print("%i: %s" % (idx, extract(args.filename, idx)))
+
+
+def cmd_timing(args):
+    entries = []
+    with open(args.logfile, "rb") as f:
+        while True:
+            block = f.read(BLOCK_SIZE)
+            if not block:
+                break
+            entry_str = block.rstrip(b"\x00").decode("utf-8").strip()
+            if not entry_str:
+                continue
+            try:
+                entry = json.loads(entry_str)
+                if isinstance(entry, dict) and "start" in entry and "stop" in entry:
+                    entries.append(entry)
+            except json.JSONDecodeError:
+                pass
+
+    if not entries:
+        print("No timing events found in log file")
+        return
+
+    durations = []
+    for entry in entries:
+        start = float(entry["start"])
+        stop = float(entry["stop"])
+        duration = stop - start
+        durations.append(duration)
+        print(f"Index {len(durations)-1}: {duration:.3f}s")
+
+    if durations:
+        print(f"\nTiming Statistics:")
+        print(f"  Count:   {len(durations)}")
+        print(f"  Min:     {min(durations):.3f}s")
+        print(f"  Max:     {max(durations):.3f}s")
+        print(f"  Average: {sum(durations) / len(durations):.3f}s")
+        print(f"  Total:   {sum(durations):.3f}s")
 
 
 def do_open_write(filename):
@@ -35,13 +92,27 @@ def do_open_read(filename):
 
 
 def do_write(filename, record):
+    import time, traceback
+
     global fp
-    if fp == None: do_open_write(filename)
-    # print("result_log: write: '%s'" % filename, flush=True)
-    B = bytearray(BLOCK_SIZE)
-    B[:len(record)] = record.encode("utf-8")
-    fp.write(B)
-    fp.flush()
+    try:
+        if fp == None: do_open_write(filename)
+        # print("result_log: write: '%s'" % filename, flush=True)
+        B = bytearray(BLOCK_SIZE)
+        B[:len(record)] = record.encode("utf-8")
+        fp.write(B)
+        fp.flush()
+    except Exception as e:
+        print("", flush=True)
+        print("result_log.do_write(): EXCEPTION: filename=" + filename)
+        print("result_log.do_write() " + str(e))
+        print("", flush=True)
+        t = traceback.format_exc()
+        print(t)
+        print("", flush=True)
+        time.sleep(1)
+        exit(1)
+
     # Return a string to Swift/T:
     return str(True)
 

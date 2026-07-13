@@ -35,6 +35,12 @@ file mkdir $LOCAL_PREFIX
 foreach f $files {
   if { $rank == 0 } {
     puts "copying: $f"
+    flush stdout
   }
   turbine::c::copy_to $comm $f $LOCAL_PREFIX
+  if { $rank == 0 } {
+    puts "copy ok."
+    flush stdout
+  }
+
 }

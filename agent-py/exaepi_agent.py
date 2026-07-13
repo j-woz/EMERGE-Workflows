@@ -20,7 +20,7 @@ RUNDIRS:
 A rundir contains the input.cfg and agent.out
 """
 
-import os, sys, traceback
+import os, sys, time, traceback, json
 
 import cfg_edit
 
@@ -56,15 +56,11 @@ def run(idx, template_cfg, seed, urbanpop, cases, params):
                               f"{workdir}/{cases}",
                               params, input_cfg)
 
-    print("PATH: " + os.getenv("PATH"))
+    # print("PATH: " + os.getenv("PATH"))
 
-    L = os.listdir("/tmp/wozniak/exaepi")
-    print("TMP: " + str(L))
-
-    L = os.listdir(rundir)
-    print("RUNDIR: " + str(L))
-
+    start = time.time()
     run_exaepi(workdir, rundir, input_cfg, agent_out)
+    stop  = time.time()
 
     # result: dict of JSON
     result = get_results(agent_out)
@@ -77,7 +73,9 @@ def run(idx, template_cfg, seed, urbanpop, cases, params):
     if "params_id" in params:
         result["params_id"] = params["params_id"]
     # the random seed used:
-    result["seed"]   = seed
+    result["seed"]  = seed
+    result["start"] = "%0.3f" % start
+    result["stop"]  = "%0.3f" % stop
 
     # Convert dict of JSON to string for Swift/T:
     s = format_json(result)
@@ -142,8 +140,9 @@ def lines2params(lines):
     # headers = pair[0].split(',')
     # values  = pair[1].split(',')
     (headers, values) = data_list
-    assert len(headers) == len(values), ("mismatch: headers=%i values=%i" %
-                                         (len(headers), len(values)))
+    assert len(headers) == len(values), \
+        ("mismatch: headers=%i values=%i" %
+         (len(headers), len(values)))
     params = {}
     # print("headers: " + str(headers))
     for header, value in zip(headers, values):
@@ -162,30 +161,39 @@ def run_exaepi(workdir, rundir, input_cfg, agent_out):
     if not chmod:
         os.chmod(agent, 0o755)
         chmod = True
-    cmd = ["mpiexec", "affinity.sh", agent, input_cfg]
-    print("cmd: " + str(cmd), flush=True)
+    cmd = ["mpiexec", "-n", "1", "-launcher", "fork", "affinity.sh",
+           agent, input_cfg]
+    # print("cmd: " + str(cmd), flush=True)
 
     environment = os.environ.copy()
     del environment["PMIX_NAMESPACE"]
     environment["PMIX_MCA_psec"] = "none"
     environment["RANK"] = os.getenv("ADLB_RANK_SELF")
 
-    with open(agent_out, "w") as fp:
+    touch(agent_out)
+    with open(agent_out, "r+") as fp:
         child = subprocess.run(cmd,
                                cwd = rundir,
-                               env = environment
-                               # stdout=fp,
+                               env = environment, # ,
+                               stdout=fp # ,
                                # stderr=subprocess.STDOUT
                                )
-    check_child(child)
+        check_child(child, fp)
 
 
-def check_child(child):
-    if child.returncode != 0:
-        print("exaepi_agent.run_exaepi(): agent exit code: %i" %
-              child.returncode,
-              flush=True)
-        exit(1)
+def touch(agent_out):
+    with open(agent_out, "w") as fp: pass
+
+
+def check_child(child, fp):
+    if child.returncode == 0: return
+    print("exaepi_agent.run_exaepi(): agent exit code: %i" %
+          child.returncode,
+          flush=True)
+    fp.seek(0)
+    text = fp.read()
+    print(text)
+    exit(1)
     # print("ExaEpi agent OK.", flush=True)
 
 
@@ -213,10 +221,8 @@ def get_results(agent_out):
 
 
 def format_json(D):
-    """ Format nicely in JSON """
-    import pprint
-    result = pprint.pformat(D) + "\n\n"
-    return result
+    """ Format as valid JSON with indentation for readability """
+    return json.dumps(D, indent=2) + "\n"
 
 
 def run_fake(idx, template_cfg, seed, urbanpop, cases, params):
@@ -227,3 +233,11 @@ def run_fake(idx, template_cfg, seed, urbanpop, cases, params):
 def verbose(msg):
     if VERBOSE:
         print(msg, flush=True)
+
+"""
+    L = os.listdir("/tmp/wozniak/exaepi")
+    print("TMP: " + str(L))
+
+    L = os.listdir(rundir)
+    print("RUNDIR: " + str(L))
+"""

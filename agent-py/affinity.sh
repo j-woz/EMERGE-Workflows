@@ -8,10 +8,8 @@ num_tile=1 # 1
 
 HOSTDOMAIN=$( hostname -d )
 
-set -x
-sleep 1
-sleep $[ RANK * 10 ]
-echo "affinity start $RANK ..."
+# sleep $[ RANK * 10 ]
+# echo "affinity start $RANK ..."
 
 if [[ $HOSTDOMAIN == *aurora* ]]
 then
@@ -38,6 +36,6 @@ else
   return 1
 fi
 
-echo "affinity hand-off:"
-set -x
+# echo "affinity hand-off:"
+# set -x
 ${*}

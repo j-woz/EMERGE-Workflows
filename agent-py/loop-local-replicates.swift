@@ -70,10 +70,10 @@ run_replicates(location CSV_GET,
   int A[];
   foreach seed in [0:replicates-1]
   {
-    printf("agent: level=%i, seed=%i", level, seed);
+    // printf("agent: level=%i, seed=%i", level, seed);
     result = agent_csv_lines(level * replicates + seed, template_cfg,
                              seed, urbanpop, cases, csv_lines);
-    printf("result: '%s'", result);
+    // printf("result: '%s'", result);
     result_log(result_file, result);
     A[seed] = bool2int(strlen(result) > 0);
   }
