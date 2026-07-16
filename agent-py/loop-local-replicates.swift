@@ -2,6 +2,7 @@
 /**
    LOOP LOCAL REPLICATES SWIFT
    See README
+   See Command Line Arguments below for usage
 */
 
 import assert;
@@ -19,6 +20,7 @@ import agent;
 
 import csv_get;
 
+// Command Line Arguments:
 string template_cfg = argp(1);
 string csv_file     = argp(2);
 int    replicates   = string2int(argp(3));
