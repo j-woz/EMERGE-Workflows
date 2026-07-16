@@ -20,6 +20,7 @@ The Swift/T workflow and Python modules in this directory:
 * Efficiently log to and retrieve results from agent executions in the shared filesystem.
 ** All result parameters are inserted into a single log, formatted as JSON strings.
 ** A single Swift/T worker funnels all output values into this log.
+** This avoids the many-small-file problem.
 
 == Quick start
 
