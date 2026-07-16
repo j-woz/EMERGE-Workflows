@@ -175,4 +175,4 @@ or
 [source,bash]
 ----
 $ dd bs=4K skip=12 count=1 if=results.log | tr -d '\0'
----
+----
