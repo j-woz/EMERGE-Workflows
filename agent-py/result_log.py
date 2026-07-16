@@ -105,7 +105,7 @@ def do_write(filename, record):
     except Exception as e:
         print("", flush=True)
         print("result_log.do_write(): EXCEPTION: filename=" + filename)
-        print("result_log.do_write() " + str(e))
+        print("result_log.do_write(): " + str(e))
         print("", flush=True)
         t = traceback.format_exc()
         print(t)
