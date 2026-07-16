@@ -37,16 +37,19 @@ where:
 
 The `loop-local.swift` calls into the Python libraries below to run the ExaEpi `agent` and perform I/O.
 
-The format of `results.log` is a list of 1024-byte blocks, each of which contains a NUL-padded JSON string that contains the result data, e.g.:
+The format of `results.log` is a list of 4096-byte blocks, each of which contains a NUL-padded JSON string that contains the result data, e.g.:
 
 [source,json]
 ----
 {
-  'day_final': 113,
-  'id': '2',
-  'seed': 0,
-  'infected': [21, 23, 30, ..., 15664],
-  'deaths': [0, 0, ..., 352, 365]
+  "day_final": 113,
+  "idx": 2,
+  "params_id": "96",
+  "seed": 0,
+  "infected": [21, 23, 30, ..., 15664],
+  "deaths": [0, 0, ..., 352, 365],
+  "start": "1784217950.423",
+  "stop": "1784217954.097"
 }
 ----
 
@@ -79,7 +82,7 @@ The workflow:
 
 . Iterates over `total` run indices
 . Generates a random seed for each iteration
-. Calls `agent()` (mapped to Python's `exaepi_agent.run()`) with:
+  . Calls `agent()` (mapped to Python's `exaepi_agent.run()`) with:
   ** Run index
   ** Template configuration file
   ** Random seed
@@ -142,7 +145,7 @@ python cfg_edit.py <template_cfg> <input_cfg> <rundir> [options]
 
 === result_log.py
 
-Manages result logging for agent executions by stuffing Python strings into 1024-byte NUL-padded blocks.
+Manages result logging for agent executions by stuffing Python strings into 4096-byte NUL-padded blocks.
 Used as a library from the workflow.
 
 * `do_open_write()` - Open log file in write mode
@@ -155,7 +158,21 @@ Also provides a command-line interface for interactive extraction:
 Usage:
 [source,bash]
 ----
-python result_log.py <filename> [idx ...]
+$ python result_log.py extract <filename> [idx ...]
 ----
 
-You can also extract this data with `dd bs=1K skip=N count=M ...` and `tr`.
+You can also extract this data with `dd bs=4K skip=N count=M ...` and `tr`.
+
+For example, to extract the 12th block from the file, do:
+
+[source,bash]
+----
+$ python result_log.py extract result.log 12
+----
+
+or
+
+[source,bash]
+----
+$ dd bs=4K skip=12 count=1 if=results.log | tr -d '\0'
+---
