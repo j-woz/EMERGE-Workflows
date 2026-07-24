@@ -6,7 +6,7 @@ import json
 
 from datetime import datetime
 
-BLOCK_SIZE = 4 * 1024
+BLOCK_SIZE = 32 * 1024
 
 fp = None
 
