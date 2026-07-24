@@ -16,9 +16,11 @@ agent_dict(int idx, string input_cfg, int seed,
      (idx, input_cfg, seed, urbanpop, cases, params));
 }
 
-/** params should be string of Python dict */
+/**
+   task_id: A unique ID to identify this task
+*/
 (string result)
-agent_csv_lines(int idx, string input_cfg, int seed,
+agent_csv_lines(int task_id, string input_cfg, int seed,
                 string urbanpop, string cases,
                 string csv_lines)
 {
@@ -38,6 +40,6 @@ except Exception as e:
     print('', flush=True)
     exit(1)
 """ %
-     (idx, input_cfg, seed, urbanpop, cases, csv_lines),
+     (task_id, input_cfg, seed, urbanpop, cases, csv_lines),
      "str(result)");
 }

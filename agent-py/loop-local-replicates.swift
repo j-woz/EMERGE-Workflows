@@ -30,6 +30,7 @@ string result_file  = argp(6);
 
 assert(turbine_workers() >= 3, "need at least 3 workers!");
 
+// RL: The location for the Result Log:
 location RL = locationFromRank(turbine_workers()-1);
 
 result_log(string filename, string record)
@@ -40,8 +41,6 @@ result_log(string filename, string record)
                    "result_log.do_write(\"%s\", \"\"\"%s\"\"\")" %
                    (filename, record));
 }
-
-// Find all the input files:
 
 printf("csv_file: " + csv_file);
 
@@ -73,7 +72,8 @@ run_replicates(location CSV_GET,
   foreach seed in [0:replicates-1]
   {
     // printf("agent: level=%i, seed=%i", level, seed);
-    result = agent_csv_lines(level * replicates + seed, template_cfg,
+    task_id = level * replicates + seed;
+    result = agent_csv_lines(task_id, template_cfg,
                              seed, urbanpop, cases, csv_lines);
     // printf("result: '%s'", result);
     result_log(result_file, result);
