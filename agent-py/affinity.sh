@@ -1,4 +1,7 @@
+#!/bin/bash
+set -eu
 
+# AFFINITY SH
 # Source this to get CUDA or ZE settings for given GPUs and TILES
 # Assumes RANK is set
 # Sets human-readable AFFINITY_LABEL for logging or whatever
