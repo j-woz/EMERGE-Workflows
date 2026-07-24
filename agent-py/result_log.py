@@ -94,6 +94,13 @@ def do_open_read(filename):
 def do_write(filename, record):
     import time, traceback
 
+    if len(record) > BLOCK_SIZE:
+        print("result_log.do_write(): record too big: "
+              "length=%i BLOCK_SIZE=%i" % (len(record), BLOCK_SIZE),
+              flush=True)
+        time.sleep(1)
+        exit(1)
+
     global fp
     try:
         if fp == None: do_open_write(filename)
