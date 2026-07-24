@@ -33,10 +33,15 @@ then
   export CUDA_VISIBLE_DEVICES=$(( RANK % num_gpu ))
   AFFINITY_LABEL="CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
 
-else
-  echo "affinity.sh: unknown host: $HOSTDOMAIN"
-  AFFINITY_LABEL="UNKNOWN"
-  return 1
+# else
+
+#   Actually we probably want to allow miscellaneous systems to just run,
+#   for example, local execution.
+
+#   echo "affinity.sh: unknown host: $HOSTDOMAIN"
+#   AFFINITY_LABEL="UNKNOWN"
+#   return 1
+
 fi
 
 # echo "affinity hand-off:"
