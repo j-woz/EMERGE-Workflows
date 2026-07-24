@@ -49,17 +49,22 @@ The format of `results.log` is a list of 4096-byte blocks, each of which contain
 ----
 {
   "day_final": 113,
-  "idx": 2,
-  "params_id": "96",
+  "task_id": 2,
+  "params_id": 96,
+  "cfg_id": "42",
   "seed": 0,
-  "infected": [21, 23, 30, etc, 15664],
-  "deaths": [0, 0, etc, 352, 365],
-  "start": "1784217950.423",
-  "stop": "1784217954.097"
+  "infected": [21, 23, 30, 15664],
+  "deaths": [0, 0, 352, 365],
+  "start": 1784217950.423,
+  "stop": 1784217954.097,
+  "output_dat": "Day          Su       PS/PI     S/PI/NH      S/PI/H        PS/I      S/I/NH       S/I/H        A/PI         A/I        H/NI         H/I         ICU           V           R           D        NewI        NewS        NewH        NewA        NewP      SympU5   Symp5to17  Symp18to29  Symp30to49  Symp50to64     SympO64      HospU5   Hosp5to17  Hosp18to29  Hosp30to49  Hosp50to64     HospO64
+    0    2090577         21          0          0          0          0          0          0          0          0          0          0          0          0          0         21          0          0          0          0           0           0           0           0           0           0           0           0           0           0           0           0
+    1    2090575         11          0          0         11          0          0          1          0          0          0          0          0          0          0          2          0          0          1          1           0           0           0           0           0           0           0           0           0           0           0           0
+..."
 }
 ----
 
-See below for how this file is written and how to extract JSON fragments from it.
+See below for how this file is written and how to extract JSON fragments from it.  `output_dat` is just a paste of the ExaEpi output DAT file.
 
 === Rank counts
 
