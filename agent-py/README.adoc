@@ -28,13 +28,18 @@ The Swift/T workflow and Python modules in this directory:
 $ swift-t -n $PROCS loop-local.swift template.cfg $N $POP $CASES results.log
 ----
 
+----
+$ swift-t -n $PROCS loop-local-replicates.swift template.cfg $PARAMS_CSV $N $POP $CASES results.log
+----
+
 where:
 
 * `PROCS`: the process count
 * `template.cfg`: the template cfg file which will be edited for each `agent` run
+* `PARAMS_CSV`: The CSV file of pre-generated parameters
 * `POP`: the population data file
 * `CASES`: the cases data file
-* `results.log`: the output results file
+* `results.log`: the output JSON log file
 
 The `loop-local.swift` calls into the Python libraries below to run the ExaEpi `agent` and perform I/O.
 
@@ -55,6 +60,10 @@ The format of `results.log` is a list of 4096-byte blocks, each of which contain
 ----
 
 See below for how this file is written and how to extract JSON fragments from it.
+
+=== Rank counts
+
+`loop-local-replicates.swift` requires 3 workers, 1 for the CSV input stream, 1 for the JSON log output stream, and 1 for general work.  The I/O stream workers can also do normal work (ExaEpi) when not busy with I/O.
 
 == Swift/T Workflow: `loop-local.swift`
 
@@ -93,6 +102,18 @@ The workflow:
 . Results are stored in 1024-byte blocks indexed by run number
 
 The `result_log()` function in the Swift workflow calls the Python `result_log.do_write()` to persist results to disk using the dedicated last worker process (rank _n-1_, accessed via the Swift/T `@location` syntax).
+
+== Swift/T Workflow: `loop-local-replicates.swift`
+
+As `loop-local.swift` but supports replicates
+
+IDs:
+
+* `task_id`:   A unique ID generated for each task by the workflow layer
+* `cfg_id`:    An ID in the `input.cfg` file, key `id`.  If this is defined in a reused `template.cfg`, this is not unique.
+* `params_id`: The ID of the row in the input `PARAMS_CSV` file
+
+So each ExaEpi run has 3 unique IDs, which are not the same, because they come from different sources!
 
 == Python layer: `exaepi_agent.py`
 
@@ -194,3 +215,10 @@ Each JSON record contains:
 * "deaths": The death count scraped from the ExaEpi output
 * "start": The start time in seconds since the Unix Epoch
 * "stop": The stop time in seconds since the Unix Epoch
+
+== Local execution
+
+* The `loop-local` workflows want `agent`, `affinity.sh`, `POP`, `CASES` in local storage
+* Put the local directory in `PATH`
+
+TODO: Copy Python libs into local storage too.
