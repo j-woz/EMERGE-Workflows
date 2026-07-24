@@ -52,8 +52,8 @@ The format of `results.log` is a list of 4096-byte blocks, each of which contain
   "idx": 2,
   "params_id": "96",
   "seed": 0,
-  "infected": [21, 23, 30, ..., 15664],
-  "deaths": [0, 0, ..., 352, 365],
+  "infected": [21, 23, 30, etc, 15664],
+  "deaths": [0, 0, etc, 352, 365],
   "start": "1784217950.423",
   "stop": "1784217954.097"
 }
