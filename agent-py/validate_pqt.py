@@ -30,12 +30,59 @@ def check_magic(path):
 
 
 def load_log(log_path):
-    records = []
+    """Parse the (slightly malformed) results log.
+
+    Object values contain literal newlines, which JSON forbids, and
+    objects may be pretty-printed with whitespace padding between
+    them. Scan char by char, escaping control chars inside strings,
+    and yield each top-level object -- mirroring the Java reader.
+    """
     with open(log_path) as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                records.append(json.loads(line))
+        data = f.read()
+
+    records = []
+    obj = []
+    in_string = False
+    escaped = False
+    depth = 0
+
+    for c in data:
+        if depth == 0 and not in_string and c != "{":
+            continue
+
+        if in_string:
+            if escaped:
+                obj.append(c)
+                escaped = False
+            elif c == "\\":
+                obj.append(c)
+                escaped = True
+            elif c == '"':
+                obj.append(c)
+                in_string = False
+            elif c == "\n":
+                obj.append("\\n")
+            elif c == "\r":
+                obj.append("\\r")
+            elif c == "\t":
+                obj.append("\\t")
+            else:
+                obj.append(c)
+            continue
+
+        if c == '"':
+            obj.append(c)
+            in_string = True
+            continue
+        if c == "{":
+            depth += 1
+        obj.append(c)
+        if c == "}":
+            depth -= 1
+            if depth == 0:
+                records.append(json.loads("".join(obj)))
+                obj = []
+
     return records
 
 

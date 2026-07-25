@@ -12,3 +12,10 @@ set -eu
 
 # Show a sample of the output
 ./show_pqt results_example.parquet 3
+
+# Also test the multi-line / padded log (real newlines in strings)
+./log2pqt results.log results.parquet
+
+./validate_pqt results.parquet results.log part-000000.parquet
+
+./show_pqt results.parquet 3

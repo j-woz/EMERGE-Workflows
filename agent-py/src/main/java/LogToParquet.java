@@ -72,30 +72,105 @@ public class LogToParquet
   readJsonLines(String filePath)
   throws IOException
   {
-    List<Map<String, Object>> records = new ArrayList<>();
-    try (BufferedReader reader =
+    // Read the whole file, then split into top-level JSON objects.
+    // The log is slightly malformed: object values (output_dat)
+    // contain literal newlines, which JSON forbids.  We scan
+    // character by character, tracking string vs brace state, and
+    // escape control chars found inside strings so each object
+    // parses.  This also tolerates pretty-printed objects and the
+    // whitespace padding written between fixed-size log blocks.
+    StringBuilder file = new StringBuilder();
+    try (Reader reader =
          new BufferedReader(new FileReader(filePath)))
     {
-      String line;
-      while ((line = reader.readLine()) != null)
+      int ch;
+      while ((ch = reader.read()) != -1)
       {
-        line = line.trim();
-        if (line.isEmpty()) continue;
-        try
+        file.append((char) ch);
+      }
+    }
+
+    List<Map<String, Object>> records = new ArrayList<>();
+
+    StringBuilder obj = new StringBuilder();
+    boolean inString = false;
+    boolean escaped = false;
+    int depth = 0;
+
+    for (int i = 0; i < file.length(); i++)
+    {
+      char c = file.charAt(i);
+
+      // Outside any object, skip padding / whitespace until '{'
+      if (depth == 0 && !inString && c != '{') continue;
+
+      if (inString)
+      {
+        if (escaped)
         {
-          @SuppressWarnings("unchecked")
-          Map<String, Object> obj =
-            (Map<String, Object>) JSONValue.parse(line);
-          if (obj != null) records.add(obj);
+          obj.append(c);
+          escaped = false;
+          continue;
         }
-        catch (Exception e)
+        if (c == '\\')
         {
-          System.err.println("Warning: Failed to parse JSON: " +
-                             e.getMessage());
+          obj.append(c);
+          escaped = true;
+          continue;
+        }
+        if (c == '"')
+        {
+          obj.append(c);
+          inString = false;
+          continue;
+        }
+        // Escape literal control chars that are illegal in JSON
+        // strings (the whole point of this preprocessing).
+        if (c == '\n')      obj.append("\\n");
+        else if (c == '\r') obj.append("\\r");
+        else if (c == '\t') obj.append("\\t");
+        else                obj.append(c);
+        continue;
+      }
+
+      // Not in a string
+      if (c == '"')
+      {
+        obj.append(c);
+        inString = true;
+        continue;
+      }
+      if (c == '{') depth++;
+      obj.append(c);
+      if (c == '}')
+      {
+        depth--;
+        if (depth == 0)
+        {
+          parseObject(obj.toString(), records);
+          obj.setLength(0);
         }
       }
     }
+
     return records;
+  }
+
+  private static void
+  parseObject(String json, List<Map<String, Object>> records)
+  {
+    try
+    {
+      @SuppressWarnings("unchecked")
+      Map<String, Object> obj =
+        (Map<String, Object>) JSONValue.parse(json);
+      if (obj != null) records.add(obj);
+    }
+    catch (Exception e)
+    {
+      System.err.println("Warning: Failed to parse JSON: " +
+                         e.getMessage());
+    }
   }
 
   /**
