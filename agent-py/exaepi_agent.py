@@ -62,14 +62,14 @@ def run(task_id, template_cfg, seed, urbanpop, cases, params):
     run_exaepi(work_dir, run_dir, input_cfg, agent_out)
     stop  = time.time()
 
-    # result: dict of JSON
-    result = get_results(run_dir)
+    # D: dict of results
+    D = get_results(run_dir)
     # Add some additional metadata:
-    add_metadata(result, task_id, cfg_id, params, seed, start, stop)
+    add_metadata(D, task_id, cfg_id, params, seed, start, stop)
 
-    # Convert dict of JSON to string for Swift/T:
-    s = format_json(result)
-    return s
+    # Convert dict to JSON string for Swift/T:
+    result = format_json(D)
+    return result
 
 
 def cfg_edit_checked(template_cfg, run_dir, seed, urbanpop, cases,
@@ -209,7 +209,7 @@ def check_child(child, fp):
 
 
 def get_results(run_dir):
-    """ Read ExaEpi agent output and stuff into a JSON string """
+    """ Read ExaEpi agent output and pack into a dict """
     import json
     agent_out = f"{run_dir}/agent.out"
     agent_dat = f"{run_dir}/output.dat"
