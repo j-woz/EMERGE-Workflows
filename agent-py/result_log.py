@@ -2,13 +2,19 @@
 
 """ File pointer open in binary mode for NUL characters """
 
+import atexit
 import json
 
 from datetime import datetime
 
 BLOCK_SIZE = 32 * 1024
 
-fp = None
+# Write buffer size.  Large, block-aligned writes maximize throughput
+# on HPC parallel filesystems (Lustre/GPFS), where many small writes
+# are slow.  Must be a multiple of BLOCK_SIZE.
+WRITE_BUFFER_SIZE = 256 * BLOCK_SIZE   # 8 MB
+
+fp_write = None
 
 def main():
     args = parse_args()
@@ -43,9 +49,9 @@ def cmd_extract(args):
 
 def cmd_timing(args):
     entries = []
-    with open(args.logfile, "rb") as f:
+    with open(args.logfile, "rb") as fp:
         while True:
-            block = f.read(BLOCK_SIZE)
+            block = pf.read(BLOCK_SIZE)
             if not block:
                 break
             entry_str = block.rstrip(b"\x00").decode("utf-8").strip()
@@ -80,15 +86,24 @@ def cmd_timing(args):
 
 
 def do_open_write(filename):
-    global fp
+    global fp_write
     # print("result_log: open:  '%s'" % filename, flush=True)
-    fp = open(filename, "wb")
+    fp_write = open(filename, "wb", buffering=WRITE_BUFFER_SIZE)
 
 
-def do_open_read(filename):
-    global fp
-    # print("result_log: open:  '%s'" % filename, flush=True)
-    fp = open(filename, "rb")
+@atexit.register
+def do_close():
+    """ Flush any buffered records and close the file.
+
+    Registered with atexit so the large write buffer is not lost
+    when the process exits normally.
+    """
+    global fp_write
+    print("do_close()", flush=True)
+    if fp_write is not None:
+        fp_write.flush()
+        fp_write.close()
+        fp_write = None
 
 
 def do_write(filename, record):
@@ -101,14 +116,14 @@ def do_write(filename, record):
         time.sleep(1)
         exit(1)
 
-    global fp
+    global fp_write
     try:
-        if fp == None: do_open_write(filename)
+        if fp_write == None: do_open_write(filename)
         # print("result_log: write: '%s'" % filename, flush=True)
         B = bytearray(BLOCK_SIZE)
         B[:len(record)] = record.encode("utf-8")
-        fp.write(B)
-        fp.flush()
+        fp_write.write(B)
+        # fp_write.flush()
     except Exception as e:
         print("", flush=True)
         print("result_log.do_write(): EXCEPTION: filename=" + filename)
@@ -126,9 +141,9 @@ def do_write(filename, record):
 
 def extract(filename, idx):
     """ Seek to the idx-th BLOCK_SIZE-byte block and return its string. """
-    with open(filename, "rb") as f:
-        f.seek(idx * BLOCK_SIZE)
-        B = f.read(BLOCK_SIZE)
+    with open(filename, "rb") as fp:
+        fp.seek(idx * BLOCK_SIZE)
+        B = fp.read(BLOCK_SIZE)
     return B.rstrip(b"\x00").decode("utf-8")
 
 
