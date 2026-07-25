@@ -99,7 +99,7 @@ def do_close():
     when the process exits normally.
     """
     global fp_write
-    print("do_close()", flush=True)
+    print("result_log: close.", flush=True)
     if fp_write is not None:
         fp_write.flush()
         fp_write.close()
