@@ -15,20 +15,32 @@ TRUNC = 80  # max chars to show per value
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python3 show_pqt.py <file.parquet> [max_rows]")
-        sys.exit(2)
+    args = parse_args()
+    check_installation()
+    show(args.file, args.max_rows)
 
-    path = sys.argv[1]
-    max_rows = int(sys.argv[2]) if len(sys.argv) > 2 else None
 
+def parse_args():
+    import argparse
+    parser = argparse.ArgumentParser(
+        description="Display the contents of a Parquet file.")
+    parser.add_argument("file", help="Parquet file to display")
+    parser.add_argument("max_rows", nargs="?", type=int, default=None,
+                        help="maximum number of rows to show")
+    return parser.parse_args()
+
+
+def check_installation():
+    global pq
     try:
         import pyarrow.parquet as pq
     except ImportError:
         print("pyarrow not installed. Run: pip install pyarrow")
         sys.exit(1)
 
-    table = pq.read_table(path)
+
+def show(filename, max_rows=None):
+    table = pq.read_table(filename)
 
     print("Schema:")
     print(table.schema)
