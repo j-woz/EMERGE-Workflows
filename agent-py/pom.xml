@@ -30,6 +30,16 @@
             <artifactId>json-simple</artifactId>
             <version>1.1.1</version>
         </dependency>
+
+        <!-- No-op SLF4J binding: silences the "Failed to load
+             StaticLoggerBinder / defaulting to NOP" startup warnings
+             by providing the binding SLF4J looks for. Version matches
+             the slf4j-api pulled in transitively by parquet. -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-nop</artifactId>
+            <version>1.7.33</version>
+        </dependency>
     </dependencies>
 
     <build>

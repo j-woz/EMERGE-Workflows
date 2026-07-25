@@ -8,16 +8,24 @@ import org.apache.parquet.schema.Types;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
-   Convert an EMERGE results JSON-lines log into a Parquet file
-   matching the reference "long" format (see part-000000.parquet):
+   Convert an EMERGE results log into a Parquet file matching the
+   reference "long" format (see part-000000.parquet):
 
    - each record's output_dat text table is exploded into one row
      per Day
    - columns: row_id (=task_id), seed, Day, then a fixed subset of
      the simulation columns (renamed  /  to  _ )
+
+   The log is a sequence of fixed-size blocks, each holding one
+   pretty-printed JSON object padded out to the block boundary.
+   The object values (output_dat) contain literal newlines, which
+   JSON forbids, so we escape control chars inside strings before
+   parsing.  To keep memory bounded we auto-detect the block size,
+   then read and write one block at a time.
 */
 public class LogToParquet
 {
@@ -43,63 +51,169 @@ public class LogToParquet
     String inputPath = args[0];
     String outputPath = args[1];
 
-    List<Map<String, Object>> records = readJsonLines(inputPath);
-    if (records.isEmpty())
-    {
-      System.err.println("No records found in input file");
-      System.exit(1);
-    }
-    System.out.println("Loaded " + records.size() +
-                       " records from " + inputPath);
+    long blockSize = detectBlockSize(inputPath);
+    System.out.println("Block size: " + blockSize/1024 + " KB");
 
-    // Explode every record's output_dat into flat per-Day rows.
-    List<Object[]> rows = new ArrayList<>();
-    for (Map<String, Object> record : records)
-    {
-      explode(record, rows);
-    }
-    System.out.println("Exploded to " + rows.size() + " rows");
+    // Predict block count from the file size: each record occupies
+    // exactly one fixed-size block.
+    long fileSize = new File(inputPath).length();
+    long blocks = (blockSize > 0) ? (fileSize / blockSize) : 0;
+    System.out.println("File size: " + fileSize/1024 + " KB");
+    System.out.println("Expected blocks: " + blocks);
 
     MessageType schema = buildSchema();
     System.out.println("Schema:\n" + schema);
 
-    writeToParquet(rows, schema, outputPath);
-    System.out.println("Written " + rows.size() + " rows to " +
+    long[] counts = convert(inputPath, outputPath, blockSize,
+                            schema);
+
+    System.out.println("Loaded " + counts[0] +
+                       " records from " + inputPath);
+    System.out.println("Wrote " + counts[1] + " rows to " +
                        outputPath);
   }
 
-  private static List<Map<String, Object>>
-  readJsonLines(String filePath)
+  /**
+     Determine the fixed block size by locating the byte offset of
+     the second top-level object.  Each record is written at the
+     start of a block, so that offset is the block stride.  If the
+     file holds only one block, the block size is the file length.
+  */
+  private static long detectBlockSize(String filePath)
   throws IOException
   {
-    // Read the whole file, then split into top-level JSON objects.
-    // The log is slightly malformed: object values (output_dat)
-    // contain literal newlines, which JSON forbids.  We scan
-    // character by character, tracking string vs brace state, and
-    // escape control chars found inside strings so each object
-    // parses.  This also tolerates pretty-printed objects and the
-    // whitespace padding written between fixed-size log blocks.
-    StringBuilder file = new StringBuilder();
-    try (Reader reader =
-         new BufferedReader(new FileReader(filePath)))
+    try (InputStream in =
+         new BufferedInputStream(new FileInputStream(filePath)))
     {
-      int ch;
-      while ((ch = reader.read()) != -1)
+      long pos = 0;
+      int depth = 0;
+      boolean inString = false;
+      boolean escaped = false;
+      boolean firstDone = false;
+
+      int b;
+      while ((b = in.read()) != -1)
       {
-        file.append((char) ch);
+        char c = (char) b;
+
+        if (firstDone)
+        {
+          // First object closed; the next '{' begins block two.
+          if (c == '{') return pos;
+        }
+        else if (inString)
+        {
+          if (escaped)           escaped = false;
+          else if (c == '\\')    escaped = true;
+          else if (c == '"')     inString = false;
+        }
+        else
+        {
+          if (c == '"')          inString = true;
+          else if (c == '{')     depth++;
+          else if (c == '}')
+          {
+            depth--;
+            if (depth == 0) firstDone = true;
+          }
+        }
+        pos++;
+      }
+
+      // Only one block in the file.
+      return pos;
+    }
+  }
+
+  /**
+     Stream the file one block at a time: read blockSize bytes,
+     parse the single object it contains, explode it to per-Day
+     rows, and write them.  Returns {recordCount, rowCount}.
+  */
+  private static long[]
+  convert(String inputPath, String outputPath, long blockSize,
+          MessageType schema)
+  throws IOException
+  {
+    if (blockSize > Integer.MAX_VALUE)
+    {
+      throw new IOException("Block size too large: " + blockSize);
+    }
+
+    List<String> names = columnNames();
+    Dehydrator<Object[]> dehydrator = (row, valueWriter) ->
+    {
+      for (int i = 0; i < names.size(); i++)
+      {
+        valueWriter.write(names.get(i), row[i]);
+      }
+    };
+
+    long records = 0;
+    long rows = 0;
+    File out = new File(outputPath);
+    byte[] buf = new byte[(int) blockSize];
+
+    try (ParquetWriter<Object[]> writer =
+         ParquetWriter.writeFile(schema, out, dehydrator);
+         InputStream in =
+         new BufferedInputStream(new FileInputStream(inputPath)))
+    {
+      int n;
+      while ((n = readBlock(in, buf)) > 0)
+      {
+        String block = new String(buf, 0, n,
+                                  StandardCharsets.UTF_8);
+        Map<String, Object> record = parseBlock(block);
+        if (record == null) continue;
+        records++;
+
+        List<Object[]> blockRows = new ArrayList<>();
+        explode(record, blockRows);
+        for (Object[] row : blockRows)
+        {
+          writer.write(row);
+        }
+        rows += blockRows.size();
       }
     }
 
-    List<Map<String, Object>> records = new ArrayList<>();
+    return new long[] { records, rows };
+  }
 
+  /**
+     Read up to buf.length bytes, coping with short reads.  Returns
+     the number of bytes read (0 at end of file).
+  */
+  private static int readBlock(InputStream in, byte[] buf)
+  throws IOException
+  {
+    int total = 0;
+    while (total < buf.length)
+    {
+      int r = in.read(buf, total, buf.length - total);
+      if (r == -1) break;
+      total += r;
+    }
+    return total;
+  }
+
+  /**
+     Extract and parse the first top-level JSON object in a block,
+     escaping the literal control chars that appear inside string
+     values.  Trailing block padding is ignored.  Returns null if
+     no object is found.
+  */
+  private static Map<String, Object> parseBlock(String block)
+  {
     StringBuilder obj = new StringBuilder();
     boolean inString = false;
     boolean escaped = false;
     int depth = 0;
 
-    for (int i = 0; i < file.length(); i++)
+    for (int i = 0; i < block.length(); i++)
     {
-      char c = file.charAt(i);
+      char c = block.charAt(i);
 
       // Outside any object, skip padding / whitespace until '{'
       if (depth == 0 && !inString && c != '{') continue;
@@ -145,31 +259,27 @@ public class LogToParquet
       if (c == '}')
       {
         depth--;
-        if (depth == 0)
-        {
-          parseObject(obj.toString(), records);
-          obj.setLength(0);
-        }
+        if (depth == 0) return parseObject(obj.toString());
       }
     }
 
-    return records;
+    return null;
   }
 
-  private static void
-  parseObject(String json, List<Map<String, Object>> records)
+  private static Map<String, Object> parseObject(String json)
   {
     try
     {
       @SuppressWarnings("unchecked")
       Map<String, Object> obj =
         (Map<String, Object>) JSONValue.parse(json);
-      if (obj != null) records.add(obj);
+      return obj;
     }
     catch (Exception e)
     {
       System.err.println("Warning: Failed to parse JSON: " +
                          e.getMessage());
+      return null;
     }
   }
 
@@ -221,6 +331,16 @@ public class LogToParquet
     }
   }
 
+  private static List<String> columnNames()
+  {
+    List<String> names = new ArrayList<>();
+    names.add("row_id");
+    names.add("seed");
+    names.add("Day");
+    names.addAll(Arrays.asList(DATA_COLUMNS));
+    return names;
+  }
+
   private static MessageType buildSchema()
   {
     Types.MessageTypeBuilder b = Types.buildMessage();
@@ -232,37 +352,6 @@ public class LogToParquet
       b.required(PrimitiveTypeName.FLOAT).named(col);
     }
     return b.named("schema");
-  }
-
-  private static void
-  writeToParquet(List<Object[]> rows, MessageType schema,
-                 String outputPath)
-  throws IOException
-  {
-    File out = new File(outputPath);
-
-    List<String> names = new ArrayList<>();
-    names.add("row_id");
-    names.add("seed");
-    names.add("Day");
-    names.addAll(Arrays.asList(DATA_COLUMNS));
-
-    Dehydrator<Object[]> dehydrator = (row, valueWriter) ->
-    {
-      for (int i = 0; i < names.size(); i++)
-      {
-        valueWriter.write(names.get(i), row[i]);
-      }
-    };
-
-    try (ParquetWriter<Object[]> writer =
-         ParquetWriter.writeFile(schema, out, dehydrator))
-    {
-      for (Object[] row : rows)
-      {
-        writer.write(row);
-      }
-    }
   }
 
   private static long asLong(Object v)
