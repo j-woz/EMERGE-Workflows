@@ -234,6 +234,8 @@ TODO: Copy Python libs into local storage too.
 We convert the result log into a Parquet file with `./log2pqt` .
 We used a Java program for this because we may need to parallelize.
 
+NOTE: Our JSON is slightly malformed with literal NLs in the `output_dat` entry.  Our JSON-parsing Java and Python (`validate_pqt.py`) handle this with preprocessing.
+
 . Build the tool with `./build-log2pqt.sh`
 . Run with `./log2pqt`
 . Preview  the Parquet with `./show_pqt`
