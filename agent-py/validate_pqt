@@ -1,0 +1,25 @@
+#!/bin/zsh
+set -eu
+
+# VALIDATE_PQT
+# Wrapper for validate_pqt.py
+
+# Get the directory where this script is located
+THIS="${0:h:A}"
+
+# Check if arguments provided
+if (( $# < 2 ))
+then
+  echo "Usage: validate_pqt <file.parquet> <source.log> [reference.parquet]"
+  echo ""
+  echo "Validates a Parquet file against its source JSON-lines log"
+  echo "and, if given, a reference parquet whose schema it should match"
+  exit 1
+fi
+
+python3 "$THIS/validate_pqt.py" "$@"
+
+# Local Variables:
+# sh-basic-offset: 2
+# mode: sh
+# End:

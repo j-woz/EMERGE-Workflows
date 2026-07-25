@@ -210,6 +210,7 @@ def check_child(child, fp):
 
 def get_results(run_dir):
     """ Read ExaEpi agent output and stuff into a JSON string """
+    import json
     agent_out = f"{run_dir}/agent.out"
     agent_dat = f"{run_dir}/output.dat"
     day_final = 0

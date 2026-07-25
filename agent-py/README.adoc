@@ -228,3 +228,14 @@ Each JSON record contains:
 * Put the local directory in `PATH`
 
 TODO: Copy Python libs into local storage too.
+
+== Parquet generation
+
+We convert the result log into a Parquet file with `./log2pqt` .
+We used a Java program for this because we may need to parallelize.
+
+. Build the tool with `./build-log2pqt.sh`
+. Run with `./log2pqt`
+. Preview  the Parquet with `./show_pqt`
+. Validate the Parquet with `./validate_pqt`
+

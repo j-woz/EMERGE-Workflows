@@ -1,0 +1,4 @@
+# Maven libraries directory:
+.m2
+# log2pqt installation:
+target

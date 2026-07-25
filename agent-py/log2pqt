@@ -1,0 +1,47 @@
+#!/bin/zsh
+set -e
+
+# LOG2PQT
+
+# Get the directory where this script is located
+THIS="${0:h:A}"
+JAR_FILE="$THIS/target/log-to-parquet-1.0-jar-with-dependencies.jar"
+
+# Check if arguments provided
+if (( $# < 2 ))
+then
+  echo "Usage: log2pqt <input.log> <output.parquet>"
+  echo ""
+  echo "Converts JSON log records to Parquet format"
+  exit 1
+fi
+
+INPUT="$1"
+OUTPUT="$2"
+
+# Check if input file exists
+if [[ ! -f "$INPUT" ]]
+then
+  echo "Error: Input file not found: $INPUT"
+  exit 1
+fi
+
+# Build if jar doesn't exist
+if [[ ! -f "$JAR_FILE" ]]
+then
+  echo "Building project..."
+  cd "$THIS"
+  mvn clean package -DskipTests -q
+  cd - > /dev/null
+fi
+
+# Run the converter
+echo "Converting $INPUT to $OUTPUT..."
+java -cp "$JAR_FILE" LogToParquet "$INPUT" "$OUTPUT"
+
+echo "OK"
+
+# Local Variables:
+# sh-basic-offset: 2
+# mode: sh
+# End:

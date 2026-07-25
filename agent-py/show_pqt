@@ -1,0 +1,24 @@
+#!/bin/zsh
+set -eu
+
+# SHOW_PQT
+# Wrapper for show_pqt.py
+
+# Get the directory where this script is located
+THIS="${0:h:A}"
+
+# Check if arguments provided
+if (( $# < 1 ))
+then
+  echo "Usage: show_pqt <file.parquet> [max_rows]"
+  echo ""
+  echo "Displays the schema and contents of a Parquet file"
+  exit 1
+fi
+
+python3 "$THIS/show_pqt.py" "$@"
+
+# Local Variables:
+# sh-basic-offset: 2
+# mode: sh
+# End:
