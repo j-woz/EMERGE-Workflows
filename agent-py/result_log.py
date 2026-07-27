@@ -12,11 +12,7 @@ BLOCK_SIZE = 64 * 1024
 # Write buffer size.  Large, block-aligned writes maximize throughput
 # on HPC parallel filesystems (Lustre/GPFS), where many small writes
 # are slow.  Must be a multiple of BLOCK_SIZE.
-<<<<<<< HEAD
-WRITE_BUFFER_SIZE = 256 * BLOCK_SIZE   # 8 MB
-=======
 WRITE_BUFFER_SIZE = 256 * BLOCK_SIZE
->>>>>>> 67e7e25 (Use atexit for final flush)
 
 fp_write = None
 
