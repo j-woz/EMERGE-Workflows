@@ -24,7 +24,9 @@ import os, sys, time, traceback, json
 
 import cfg_edit
 
+rank_self = -1
 VERBOSE = False
+
 
 def run(task_id, template_cfg, seed, urbanpop, cases, params):
     """
@@ -46,8 +48,13 @@ def run(task_id, template_cfg, seed, urbanpop, cases, params):
     # stdout/stderr from ExaEpi agent:
     agent_out = f"{run_dir}/agent.out"
 
+    global rank_self
+    rank_self = int(os.getenv("ADLB_RANK_SELF"))
+    # agent_out = os.getenv("TURBINE_OUTPUT") + "/rank-%02i.out" % rank_self
+
     verbose("exaepi_agent: template_cfg: " + template_cfg)
     verbose("exaepi_agent: input_cfg:    " + input_cfg)
+    verbose("exaepi_agent: agent_out:    " + agent_out)
 
     os.makedirs(run_dir, exist_ok=True)
 
@@ -148,7 +155,7 @@ def run_exaepi(work_dir, run_dir, input_cfg, agent_out):
 
     cmd = ["mpiexec", "-n", "1", "-launcher", "fork", "affinity.sh",
            agent, input_cfg]
-    # print("cmd: " + str(cmd), flush=True)
+    verbose("cmd: " + str(cmd))
 
     environment = setup_environment()
 
@@ -157,7 +164,7 @@ def run_exaepi(work_dir, run_dir, input_cfg, agent_out):
         child = subprocess.run(cmd,
                                cwd = run_dir,
                                env = environment,
-                               stdout=fp # ,
+                               stdout=fp
                                # stderr=subprocess.STDOUT
                                )
         check_child(child, fp)
@@ -197,7 +204,9 @@ def touch(agent_out):
 
 
 def check_child(child, fp):
-    if child.returncode == 0: return
+    if child.returncode == 0:
+        verbose("child OK.")
+        return
     print("exaepi_agent.run_exaepi(): agent exit code: %i" %
           child.returncode,
           flush=True)
@@ -267,7 +276,7 @@ def run_fake(idx, template_cfg, seed, urbanpop, cases, params):
 
 def verbose(msg):
     if VERBOSE:
-        print(msg, flush=True)
+        print("%3i " % rank_self + msg, flush=True)
 
 """
     L = os.listdir("/tmp/wozniak/exaepi")
