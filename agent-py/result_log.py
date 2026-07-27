@@ -111,7 +111,8 @@ def do_write(filename, record):
 
     if len(record) > BLOCK_SIZE:
         print("result_log.do_write(): record too big: "
-              "length=%i BLOCK_SIZE=%i" % (len(record), BLOCK_SIZE),
+              "length=%i BLOCK_SIZE=%i\n" % (len(record), BLOCK_SIZE) +
+              record + "\n",
               flush=True)
         time.sleep(1)
         exit(1)
