@@ -7,7 +7,7 @@ import json
 
 from datetime import datetime
 
-BLOCK_SIZE = 32 * 1024
+BLOCK_SIZE = 64 * 1024
 
 # Write buffer size.  Large, block-aligned writes maximize throughput
 # on HPC parallel filesystems (Lustre/GPFS), where many small writes
