@@ -124,7 +124,6 @@ def do_write(filename, record):
         B = bytearray(BLOCK_SIZE)
         B[:len(record)] = record.encode("utf-8")
         fp_write.write(B)
-        # fp_write.flush()
     except Exception as e:
         print("", flush=True)
         print("result_log.do_write(): EXCEPTION: filename=" + filename)
