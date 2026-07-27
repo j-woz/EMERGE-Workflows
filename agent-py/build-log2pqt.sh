@@ -3,10 +3,13 @@ set -eu
 
 # Build the log2pqt tool
 
-export MAVEN_OPTS="-Dmaven.repo.local=$PWD/.m2/repository"
+THIS=$( cd "$( dirname "$0" )" && pwd )
+cd "$THIS"
 
-echo "build.sh: Building with Maven..."
+export MAVEN_OPTS="-Dmaven.repo.local=$THIS/.m2/repository"
+
+echo "build-log2pqt.sh: Building with Maven..."
 mvn clean package -DskipTests
 
-echo "build.sh: DONE."
+echo "build-log2pqt.sh: DONE."
 # echo "Run with: java -cp target/log-to-parquet-1.0-jar-with-dependencies.jar LogToParquet <input.log> <output.parquet>"
