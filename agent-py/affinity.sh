@@ -33,8 +33,8 @@ then
   export CUDA_VISIBLE_DEVICES=$(( RANK % num_gpu ))
   AFFINITY_LABEL="CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
 
-# else
-
+else
+  :
 #   Actually we probably want to allow miscellaneous systems to just run,
 #   for example, local execution.
 
