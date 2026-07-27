@@ -6,8 +6,11 @@ set -eu
 # Assumes RANK is set
 # Sets human-readable AFFINITY_LABEL for logging or whatever
 
-num_gpu=4 # 6
-num_tile=1 # 1
+# See set_affinity_gpu_aurora.sh from:
+# https://docs.alcf.anl.gov/aurora/compiling-and-linking/aurora-example-program-makefile
+
+num_gpu=6 # 6
+num_tile=2 # 1
 
 HOSTDOMAIN=$( hostname -d )
 
@@ -26,6 +29,8 @@ then
   export ZE_ENABLE_API_TRACING=0
 
   AFFINITY_LABEL="ZE_AFFINITY_MASK=$ZE_AFFINITY_MASK"
+
+  # printf "AFFINITY %3i %s\n" $RANK $AFFINITY_LABEL
 
 elif [[ $HOSTDOMAIN == *perlm* ]]
 then
