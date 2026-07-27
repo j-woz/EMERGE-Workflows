@@ -85,25 +85,31 @@ def cmd_timing(args):
         print(f"  Total:   {sum(durations):.3f}s")
 
 
+def write_values(filename, envs, kvs):
+    """
+    Format and write arbitrary data to the result.log
+    Useful for workflow-level metadata
+    envs: string: comma-separated list of environment variable names
+    kvs:  string: comma-separated list key=value pairs
+    """
+    import os
+    D = {}
+    names = envs.split(",")
+    for name in names:
+        D[name] = str(os.getenv(name))
+    pairs = kvs.split(",")
+    for pair in pairs:
+        kv = pair.split("=")
+        D[kv[0]] = kv[1]
+    record = json.dumps(D, indent=2) + "\n"
+    result = do_write(filename, record)
+    return result
+
+
 def do_open_write(filename):
     global fp_write
     # print("result_log: open:  '%s'" % filename, flush=True)
     fp_write = open(filename, "wb", buffering=WRITE_BUFFER_SIZE)
-
-
-@atexit.register
-def do_close():
-    """ Flush any buffered records and close the file.
-
-    Registered with atexit so the large write buffer is not lost
-    when the process exits normally.
-    """
-    global fp_write
-    print("result_log: close.", flush=True)
-    if fp_write is not None:
-        fp_write.flush()
-        fp_write.close()
-        fp_write = None
 
 
 def do_write(filename, record):
@@ -137,6 +143,21 @@ def do_write(filename, record):
 
     # Return a string to Swift/T:
     return str(True)
+
+
+@atexit.register
+def do_close():
+    """
+    Flush any buffered records and close the file.
+    Registered with atexit so the large write buffer is not lost
+    when the process exits normally.
+    """
+    global fp_write
+    print("result_log: atexit: close.", flush=True)
+    if fp_write is None: return
+    fp_write.flush()
+    fp_write.close()
+    fp_write = None
 
 
 def extract(filename, idx):
