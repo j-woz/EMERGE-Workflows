@@ -13,14 +13,17 @@ set comm [ adlb::comm_get leaders ]
 set rank [ adlb::comm_rank $comm ]
 
 # If I am rank=0, construct the list of files to copy
-set DATA_DIR $env(HOME)/proj/EMERGE-WF/data-sets
+set EMERGE_WF $env(HOME)/proj/EMERGE-WF
+set DATA_DIR   $EMERGE_WF/data-sets
 set file_tmplt $env(TEMPLATE_CFG)
 set file_cases $DATA_DIR/NM_Mar16.cases
 set file_pop   $DATA_DIR/urbanpop_nm.bin
 set file_agent $DATA_DIR/agent
+set file_aff   $EMERGE_WF/agent-py/affinity.sh
 
 if { $rank == 0 } {
-  set files [ list $file_tmplt $file_cases $file_pop $file_agent ]
+  set files [ list $file_tmplt $file_cases $file_pop \
+                   $file_agent $file_aff             ]
   puts "files: $files"
 }
 
