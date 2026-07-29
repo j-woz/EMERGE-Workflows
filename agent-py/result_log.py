@@ -39,12 +39,63 @@ def parse_args():
     timing_parser.add_argument("logfile", help="Results log file to analyze")
     timing_parser.set_defaults(func=cmd_timing)
 
+    stat_parser = subparsers.add_parser("stat",
+                                        help="Pretty-print the header metadata")
+    stat_parser.add_argument("filename", help="Result log file")
+    stat_parser.set_defaults(func=cmd_stat)
+
     return parser.parse_args()
 
 
 def cmd_extract(args):
     for idx in args.indices:
         print("%i: %s" % (idx, extract(args.filename, idx)))
+
+
+def cmd_stat(args):
+    import os
+
+    file_size = os.path.getsize(args.filename)
+    file_mtime = os.path.getmtime(args.filename)
+    mtime_str = datetime.fromtimestamp(file_mtime).strftime("%Y-%m-%d %H:%M:%S")
+
+    def human_size(size):
+        for unit in ('B', 'KB', 'MB', 'GB'):
+            if size < 1024:
+                return f"{size:.1f} {unit}"
+            size /= 1024
+        return f"{size:.1f} TB"
+
+    print(f"File:   {args.filename}")
+    print(f"Size:   {human_size(file_size)}")
+    print(f"Time:   {mtime_str}")
+
+
+    header = extract(args.filename, 0)
+    if not header.strip():
+        print("No header metadata found")
+        return
+
+    total_blocks = (file_size + BLOCK_SIZE - 1) // BLOCK_SIZE
+    content_blocks = max(0, total_blocks - 1)
+
+    print(f"Blocks: {content_blocks}")
+    print()
+
+    try:
+        data = json.loads(header)
+        if isinstance(data, dict):
+            max_key_len = max(len(k) for k in data.keys()) if data else 0
+            for key, value in data.items():
+                if key == "header": continue
+                print(f"  {key:<{max_key_len}}  {value}")
+        else:
+            print(json.dumps(data, indent=2))
+    except json.JSONDecodeError:
+        print("Header is not valid JSON:")
+        print(header)
+
+    do_close()
 
 
 def cmd_timing(args):
@@ -146,14 +197,22 @@ def do_write(filename, record):
 
 
 @atexit.register
+def do_close_auto():
+    """
+    Registered with atexit so the large write buffer is not lost
+    when the workflow exits normally.
+    """
+    global fp_write
+    if fp_write is None: return
+    print("result_log: atexit: close.", flush=True)
+    do_close()
+
+
 def do_close():
     """
     Flush any buffered records and close the file.
-    Registered with atexit so the large write buffer is not lost
-    when the process exits normally.
     """
     global fp_write
-    print("result_log: atexit: close.", flush=True)
     if fp_write is None: return
     fp_write.flush()
     fp_write.close()
