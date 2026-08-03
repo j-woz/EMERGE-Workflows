@@ -1,7 +1,8 @@
 import org.json.simple.JSONValue;
 
-import blue.strategic.parquet.ParquetWriter;
 import blue.strategic.parquet.Dehydrator;
+
+import org.apache.parquet.hadoop.ParquetWriter;
 
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
@@ -128,8 +129,8 @@ public class LogToParquet
   /**
      Stream the file one block at a time: read blockSize bytes,
      parse the single object it contains, explode it to per-Day
-     rows, and write them.  The first block is expected to be
-     metadata and is stored as file-level metadata instead of data.
+     rows, and write them.  The leading header block, if present,
+     becomes the Parquet file's key/value metadata rather than data.
      Returns {recordCount, rowCount}.
   */
   private static long[]
@@ -155,78 +156,86 @@ public class LogToParquet
     long rows = 0;
     File out = new File(outputPath);
     byte[] buf = new byte[(int) blockSize];
-    List<Object[]> firstBlockRows = new ArrayList<>();
-    Map<String, String> fileMetadata = new HashMap<>();
 
     try (InputStream in =
          new BufferedInputStream(new FileInputStream(inputPath)))
     {
-      // Extract metadata from first block
+      // Read the first block before opening the writer: Parquet
+      // key/value metadata has to be handed over up front.
+      Map<String, Object> first = null;
       int n = readBlock(in, buf);
       if (n > 0)
       {
-        String block = new String(buf, 0, n,
-                                  StandardCharsets.UTF_8);
-        Map<String, Object> firstRecord = parseBlock(block);
-        if (firstRecord != null && !firstRecord.containsKey("output_dat"))
+        first = parseBlock(new String(buf, 0, n,
+                                      StandardCharsets.UTF_8));
+      }
+
+      Map<String, String> metadata = new LinkedHashMap<>();
+      if (isHeader(first))
+      {
+        for (Map.Entry<String, Object> entry : first.entrySet())
         {
-          // First block is metadata, not data
-          for (Map.Entry<String, Object> entry : firstRecord.entrySet())
-          {
-            fileMetadata.put(entry.getKey(),
-                           String.valueOf(entry.getValue()));
-          }
-          System.out.println("Found metadata block with " +
-                           fileMetadata.size() + " entries");
+          // "header" only marks the block; it is not real metadata
+          if (entry.getKey().equals("header")) continue;
+          metadata.put(entry.getKey(),
+                       String.valueOf(entry.getValue()));
         }
-        else
-        {
-          // First block is data, process it
-          if (firstRecord != null)
-          {
-            records++;
-            explode(firstRecord, firstBlockRows);
-          }
-        }
+        printMetadata(metadata);
+        first = null;
       }
 
       try (ParquetWriter<Object[]> writer =
-           ParquetWriter.writeFile(schema, out, dehydrator))
+           MetadataParquetWriter.open(schema, out, dehydrator,
+                                      metadata))
       {
-        // Write first block rows if any
-        for (Object[] row : firstBlockRows)
+        // The first block, when it held a result and not the header
+        if (first != null)
         {
-          writer.write(row);
+          records++;
+          rows += writeRecord(writer, first);
         }
-        rows += firstBlockRows.size();
 
-        // Process remaining blocks
         while ((n = readBlock(in, buf)) > 0)
         {
-          String block = new String(buf, 0, n,
-                                    StandardCharsets.UTF_8);
-          Map<String, Object> record = parseBlock(block);
+          Map<String, Object> record =
+            parseBlock(new String(buf, 0, n,
+                                  StandardCharsets.UTF_8));
           if (record == null) continue;
           records++;
-
-          List<Object[]> blockRows = new ArrayList<>();
-          explode(record, blockRows);
-          for (Object[] row : blockRows)
-          {
-            writer.write(row);
-          }
-          rows += blockRows.size();
+          rows += writeRecord(writer, record);
         }
-      }
-
-      // Write metadata to footer if found
-      if (!fileMetadata.isEmpty())
-      {
-        addMetadataToParquet(outputPath, fileMetadata);
       }
     }
 
     return new long[] { records, rows };
+  }
+
+  /**
+     The header block is tagged header=true; logs written before that
+     tag existed are recognized by carrying no result table.
+  */
+  private static boolean isHeader(Map<String, Object> record)
+  {
+    if (record == null) return false;
+    return record.containsKey("header") ||
+           !record.containsKey("output_dat");
+  }
+
+  /**
+     Explode one record and write its rows.  Returns the row count.
+  */
+  private static long
+  writeRecord(ParquetWriter<Object[]> writer,
+              Map<String, Object> record)
+  throws IOException
+  {
+    List<Object[]> rows = new ArrayList<>();
+    explode(record, rows);
+    for (Object[] row : rows)
+    {
+      writer.write(row);
+    }
+    return rows.size();
   }
 
   /**
@@ -413,20 +422,22 @@ public class LogToParquet
   }
 
   /**
-     Write metadata to stdout for reference
+     Report the header block that is going into the Parquet footer.
   */
-  private static void addMetadataToParquet(String filePath,
-                                          Map<String, String> metadata)
-  throws IOException
+  private static void printMetadata(Map<String, String> metadata)
   {
-    if (metadata.isEmpty()) return;
-
-    System.out.println("\nFile-level metadata (from first block):");
+    System.out.println("\nFile metadata (from header block):");
+    int width = 0;
+    for (String key : metadata.keySet())
+    {
+      width = Math.max(width, key.length());
+    }
     for (Map.Entry<String, String> entry : metadata.entrySet())
     {
-      System.out.println("  " + entry.getKey() + ": " +
-                       entry.getValue());
+      System.out.printf("  %-" + width + "s  %s\n",
+                        entry.getKey(), entry.getValue());
     }
+    System.out.println();
   }
 }
 
