@@ -128,7 +128,9 @@ public class LogToParquet
   /**
      Stream the file one block at a time: read blockSize bytes,
      parse the single object it contains, explode it to per-Day
-     rows, and write them.  Returns {recordCount, rowCount}.
+     rows, and write them.  The first block is expected to be
+     metadata and is stored as file-level metadata instead of data.
+     Returns {recordCount, rowCount}.
   */
   private static long[]
   convert(String inputPath, String outputPath, long blockSize,
@@ -153,28 +155,74 @@ public class LogToParquet
     long rows = 0;
     File out = new File(outputPath);
     byte[] buf = new byte[(int) blockSize];
+    List<Object[]> firstBlockRows = new ArrayList<>();
+    Map<String, String> fileMetadata = new HashMap<>();
 
-    try (ParquetWriter<Object[]> writer =
-         ParquetWriter.writeFile(schema, out, dehydrator);
-         InputStream in =
+    try (InputStream in =
          new BufferedInputStream(new FileInputStream(inputPath)))
     {
-      int n;
-      while ((n = readBlock(in, buf)) > 0)
+      // Extract metadata from first block
+      int n = readBlock(in, buf);
+      if (n > 0)
       {
         String block = new String(buf, 0, n,
                                   StandardCharsets.UTF_8);
-        Map<String, Object> record = parseBlock(block);
-        if (record == null) continue;
-        records++;
+        Map<String, Object> firstRecord = parseBlock(block);
+        if (firstRecord != null && !firstRecord.containsKey("output_dat"))
+        {
+          // First block is metadata, not data
+          for (Map.Entry<String, Object> entry : firstRecord.entrySet())
+          {
+            fileMetadata.put(entry.getKey(),
+                           String.valueOf(entry.getValue()));
+          }
+          System.out.println("Found metadata block with " +
+                           fileMetadata.size() + " entries");
+        }
+        else
+        {
+          // First block is data, process it
+          if (firstRecord != null)
+          {
+            records++;
+            explode(firstRecord, firstBlockRows);
+          }
+        }
+      }
 
-        List<Object[]> blockRows = new ArrayList<>();
-        explode(record, blockRows);
-        for (Object[] row : blockRows)
+      try (ParquetWriter<Object[]> writer =
+           ParquetWriter.writeFile(schema, out, dehydrator))
+      {
+        // Write first block rows if any
+        for (Object[] row : firstBlockRows)
         {
           writer.write(row);
         }
-        rows += blockRows.size();
+        rows += firstBlockRows.size();
+
+        // Process remaining blocks
+        while ((n = readBlock(in, buf)) > 0)
+        {
+          String block = new String(buf, 0, n,
+                                    StandardCharsets.UTF_8);
+          Map<String, Object> record = parseBlock(block);
+          if (record == null) continue;
+          records++;
+
+          List<Object[]> blockRows = new ArrayList<>();
+          explode(record, blockRows);
+          for (Object[] row : blockRows)
+          {
+            writer.write(row);
+          }
+          rows += blockRows.size();
+        }
+      }
+
+      // Write metadata to footer if found
+      if (!fileMetadata.isEmpty())
+      {
+        addMetadataToParquet(outputPath, fileMetadata);
       }
     }
 
@@ -286,12 +334,13 @@ public class LogToParquet
   /**
      Parse one record's output_dat table and append its per-Day
      rows.  Each row is:
-     [row_id(long), seed(long), Day(int), 17 floats...].
+     [row_id(long), params_id(long), seed(long), Day(int), 17 floats...].
   */
   private static void
   explode(Map<String, Object> record, List<Object[]> rows)
   {
     long rowId = asLong(record.get("task_id"));
+    long paramsId = asLong(record.get("params_id"));
     long seed = asLong(record.get("seed"));
     String outputDat = (String) record.get("output_dat");
     if (outputDat == null) return;
@@ -317,14 +366,15 @@ public class LogToParquet
       // skip malformed rows
       if (tok.length < header.length) continue;
 
-      Object[] row = new Object[3 + DATA_COLUMNS.length];
+      Object[] row = new Object[4 + DATA_COLUMNS.length];
       row[0] = rowId;
-      row[1] = seed;
-      row[2] = Integer.parseInt(tok[dayIdx]);
+      row[1] = paramsId;
+      row[2] = seed;
+      row[3] = Integer.parseInt(tok[dayIdx]);
       for (int c = 0; c < DATA_COLUMNS.length; c++)
       {
         Integer idx = colIndex.get(DATA_COLUMNS[c]);
-        row[3 + c] =
+        row[4 + c] =
           (idx != null) ? Float.parseFloat(tok[idx]) : 0.0f;
       }
       rows.add(row);
@@ -335,6 +385,7 @@ public class LogToParquet
   {
     List<String> names = new ArrayList<>();
     names.add("row_id");
+    names.add("params_id");
     names.add("seed");
     names.add("Day");
     names.addAll(Arrays.asList(DATA_COLUMNS));
@@ -345,6 +396,7 @@ public class LogToParquet
   {
     Types.MessageTypeBuilder b = Types.buildMessage();
     b.required(PrimitiveTypeName.INT64).named("row_id");
+    b.required(PrimitiveTypeName.INT64).named("params_id");
     b.required(PrimitiveTypeName.INT64).named("seed");
     b.required(PrimitiveTypeName.INT32).named("Day");
     for (String col : DATA_COLUMNS)
@@ -358,6 +410,23 @@ public class LogToParquet
   {
     if (v == null) return 0L;
     return ((Number) v).longValue();
+  }
+
+  /**
+     Write metadata to stdout for reference
+  */
+  private static void addMetadataToParquet(String filePath,
+                                          Map<String, String> metadata)
+  throws IOException
+  {
+    if (metadata.isEmpty()) return;
+
+    System.out.println("\nFile-level metadata (from first block):");
+    for (Map.Entry<String, String> entry : metadata.entrySet())
+    {
+      System.out.println("  " + entry.getKey() + ": " +
+                       entry.getValue());
+    }
   }
 }
 

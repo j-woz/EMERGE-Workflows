@@ -138,7 +138,8 @@ def main():
 
     # 2. row count == exploded data rows in the log
     log_records = load_log(log_path)
-    expected = count_data_rows(log_records)
+    data_records = [r for r in log_records if "output_dat" in r]
+    expected = count_data_rows(data_records)
     if out.num_rows == expected:
         print(f"[rows]   {out.num_rows} == exploded data rows from log -> OK")
     else:
@@ -146,9 +147,9 @@ def main():
         failures += 1
 
     # 3. spot-check first record's first data row against the parquet
-    if log_records:
+    if data_records:
         rows = out.to_pylist()
-        ok = spot_check(log_records[0], rows, out.column_names)
+        ok = spot_check(data_records[0], rows, out.column_names)
         if ok:
             print("[value]  first data row matches source output_dat -> OK")
         else:

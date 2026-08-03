@@ -42,6 +42,17 @@ def check_installation():
 def show(filename, max_rows=None):
     table = pq.read_table(filename)
 
+    # Show file metadata if present
+    if table.schema.metadata:
+        print("File Metadata:")
+        for key, value in sorted(table.schema.metadata.items()):
+            if isinstance(key, bytes):
+                key = key.decode('utf-8')
+            if isinstance(value, bytes):
+                value = value.decode('utf-8')
+            print(f"  {key}: {value}")
+        print()
+
     print("Schema:")
     print(table.schema)
     print()
