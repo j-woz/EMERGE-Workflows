@@ -71,7 +71,9 @@ See below for how this file is written and how to extract JSON fragments from it
 
 `loop-local-replicates.swift` requires 3 workers, 1 for the CSV input stream, 1 for the JSON log output stream, and 1 for general work.  The I/O stream workers can also do normal work (ExaEpi) when not busy with I/O.
 
-== Swift/T Workflow: `loop-local.swift`
+== Workflows
+
+=== `loop-local.swift`
 
 The main workflow entry point is `loop-local.swift`, which orchestrates multiple agent runs, each with a different random `seed`:
 
@@ -109,7 +111,7 @@ The workflow:
 
 The `result_log()` function in the Swift workflow calls the Python `result_log.do_write()` to persist results to disk using the dedicated last worker process (rank _n-1_, accessed via the Swift/T `@location` syntax).
 
-== Swift/T Workflow: `loop-local-replicates.swift`
+=== `loop-local-replicates.swift`
 
 As `loop-local.swift` but supports replicates
 
@@ -120,6 +122,13 @@ IDs:
 * `params_id`: The ID of the row in the input `PARAMS_CSV` file
 
 So each ExaEpi run has 3 unique IDs, which are not the same, because they come from different sources!
+
+=== Data broadcast
+
+See `hook.tcl` for the list of files broadcast to the local storage.
+
+* The `template_cfg` comes from the script command line which turns into an environment variable
+* Everything else, including programs, comes from `../data-sets`
 
 == Python layer: `exaepi_agent.py`
 
@@ -240,4 +249,3 @@ NOTE: Our JSON is slightly malformed with literal NLs in the `output_dat` entry.
 . Run with `./log2pqt`
 . Preview  the Parquet with `./show_pqt`
 . Validate the Parquet with `./validate_pqt`
-
