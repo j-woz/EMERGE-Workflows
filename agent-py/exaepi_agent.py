@@ -27,6 +27,60 @@ import cfg_edit
 rank_self = -1
 VERBOSE = False
 
+def get_version():
+    """
+    Get the ExaEpi version string
+    return: string of stdout from 'agent --version'
+            (the AMReX and ExaEpi version lines)
+    """
+    import subprocess
+    user     = os.getenv("USER")
+    work_dir = f"/tmp/{user}/exaepi"
+    affinity = work_dir + "/affinity.sh"
+    agent    = work_dir + "/agent"
+    check_exes(work_dir)
+
+    cmd = ["mpiexec", "-n", "1", "-launcher", "fork",
+           affinity, agent, "--version"]
+    verbose("cmd: " + str(cmd))
+
+    environment = setup_environment()
+
+    child = subprocess.run(cmd,
+                           cwd    = work_dir,
+                           env    = environment,
+                           stdout = subprocess.PIPE,
+                           text   = True)
+    if child.returncode != 0:
+        print("exaepi_agent.get_version(): agent exit code: %i" %
+              child.returncode,
+              flush=True)
+        print(child.stdout)
+        exit(1)
+
+    # Search output for ExaEpi version
+    s = child.stdout.strip()
+    lines = s.split('\n')
+    for line in lines:
+        if line.startswith("ExaEpi version"):
+            result = extract_version(line)
+            break
+    else:
+        # We didn't find the version- return the whole string
+        #    for user inspection (without NLs!)
+        result = s.replace('\n', ' ')
+
+    return result
+
+
+def extract_version(line):
+    # Example:
+    # ExaEpi version 25.04-34-gHASH (BRANCH) (built on DATE)
+    # Do not need tokens 0, 1
+    tokens = line.split()
+    result = " ".join(tokens[2:])
+    return result
+
 
 def run(task_id, template_cfg, seed, urbanpop, cases, params):
     """
