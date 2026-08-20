@@ -101,6 +101,7 @@ hostname, code1 = system1("hostname");
 domain,   code2 = system1("hostname -d");
 site = hostname + "." + domain;
 time_string = clock_format(CLOCK_FMT_RFC3339, clock());
+ee_install = agent_installation();
 ee_version = agent_version();
 kv_array = [
                "header=true",
@@ -111,6 +112,7 @@ kv_array = [
                "cases="          + realpath_string(cases),
                "replicates=%i"   % replicates,
                "site="           + site,
+               "exaepi_install=" + ee_install,
                "exaepi_version=" + ee_version
              ];
 kvs = join(kv_array, ",");
