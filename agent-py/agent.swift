@@ -3,6 +3,14 @@ import python;
 
 /** Swift/T interfaces for Python layer call to ExaEpi agent */
 
+(string result)
+agent_version()
+{
+  result = python_persist("import exaepi_agent",
+                          "exaepi_agent.get_version()");
+}
+
+
 /** params should be string of Python dict */
 (string result)
 agent_dict(int idx, string input_cfg, int seed,

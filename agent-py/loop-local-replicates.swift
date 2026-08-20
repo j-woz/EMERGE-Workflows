@@ -96,20 +96,24 @@ run_replicates(location CSV_GET,
 }
 
 // Specify some metadata for the result.log header:
+envs = "USER,PROCS,PPN,PWD";
 hostname, code1 = system1("hostname");
 domain,   code2 = system1("hostname -d");
 site = hostname + "." + domain;
-envs = "USER,PROCS,PPN,PWD";
-key_array = [
+time_string = clock_format(CLOCK_FMT_RFC3339, clock());
+ee_version = agent_version();
+kv_array = [
                "header=true",
-               "template="     + realpath_string(template_cfg),
-               "params_csv="   + realpath_string(params_csv),
-               "urbanpop="     + realpath_string(urbanpop),
-               "cases="        + realpath_string(cases),
-               "replicates=%i" % replicates,
-               "site="         + site
+               "date="           + time_string,
+               "template="       + realpath_string(template_cfg),
+               "params_csv="     + realpath_string(params_csv),
+               "urbanpop="       + realpath_string(urbanpop),
+               "cases="          + realpath_string(cases),
+               "replicates=%i"   % replicates,
+               "site="           + site,
+               "exaepi_version=" + ee_version
              ];
-kvs = join(key_array, ",");
+kvs = join(kv_array, ",");
 
 // Write the result.log header:
 result_log_vars(result_file, envs, kvs) =>
