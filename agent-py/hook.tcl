@@ -5,7 +5,7 @@
 
 # Set a root data directory
 set root $env(HOME)/data
-puts "HOOK HOST: [exec hostname]"
+# puts "HOOK HOST: [exec hostname]"
 
 # Get the leader communicator from ADLB
 set comm [ adlb::comm_get leaders ]
@@ -45,5 +45,6 @@ foreach f $files {
     puts "copy ok."
     flush stdout
   }
-
 }
+
+# puts "HOOK DONE: [exec hostname]"
