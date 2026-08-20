@@ -5,14 +5,12 @@ set -eu
 # Local test use case
 
 THIS=${0:A:h}
-source $THIS/utils.zsh
+source $THIS/../common/tools.zsh
 
 export PYTHONPATH=$PWD
 export ADLB_DEBUG=0
 
-if (( ${#*} != 1 )) error "Provide PARAMS!"
-
-PARAMS=$1
+args PARAMS - ${*}
 
 mkdir -pv /tmp/woz/exaepi
 
@@ -22,14 +20,15 @@ then
 fi
 
 WORK_DIR=/tmp/woz/exaepi
-cp -uv template.cfg urbanpop_nm.bin NM_Mar16.cases =agent $WORK_DIR
-NOOP=affinity-noop.sh
-AFFINITY=$WORK_DIR/affinity.sh
-if [[ ! -f        $AFFINITY ]] ||
-   [[   $NOOP -nt $AFFINITY ]] {
-  cp -v $NOOP     $AFFINITY
-  chmod u+x       $AFFINITY
-}
+cp -uv template.cfg urbanpop_nm.bin NM_Mar16.cases affinity.sh $WORK_DIR
+# =agent
+# NOOP=affinity-noop.sh
+# AFFINITY=$WORK_DIR/affinity.sh
+# if [[ ! -f        $AFFINITY ]] ||
+#    [[   $NOOP -nt $AFFINITY ]] {
+#   cp -v $NOOP     $AFFINITY
+#   chmod u+x       $AFFINITY
+# }
 
 PATH=$WORK_DIR:$PATH
 
