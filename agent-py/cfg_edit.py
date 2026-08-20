@@ -74,7 +74,7 @@ def process(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg):
     template_cfg: original cfg on disk
     rundir:       directory in which ExaEpi should run and write data
     seed:         int seed
-    params:       dict of other parameters to modify
+    params:       dict of other parameters to modify (from CSV?)
     input_cfg:    ExaEpi input file generated here.
     returns:      The id number from the cfg
     """
