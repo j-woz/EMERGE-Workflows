@@ -27,6 +27,35 @@ import cfg_edit
 rank_self = -1
 VERBOSE = False
 
+def get_installation():
+    """
+    Get the ExaEpi installation directory
+    return: string of stdout from '/usr/bin/which agent'
+    """
+    import subprocess
+    # check_exes(work_dir)
+
+    print("get_installation() ...", flush=True)
+
+    cmd = ["/usr/bin/which", "agent"]
+
+    verbose("cmd: " + str(cmd))
+
+    child = subprocess.run(cmd,
+                           stdout = subprocess.PIPE,
+                           text   = True)
+    if child.returncode != 0:
+        print("exaepi_agent.get_installation(): " +
+              "exit code from which: %i" % child.returncode,
+              flush=True)
+        print(child.stdout)
+        exit(1)
+
+    result = child.stdout.strip()
+    print("get_installation(): " + result, flush=True)
+
+    return result
+
 def get_version():
     """
     Get the ExaEpi version string
@@ -36,12 +65,9 @@ def get_version():
     import subprocess
     user     = os.getenv("USER")
     work_dir = f"/tmp/{user}/exaepi"
-    affinity = work_dir + "/affinity.sh"
-    agent    = work_dir + "/agent"
-    check_exes(work_dir)
 
     cmd = ["mpiexec", "-n", "1", "-launcher", "fork",
-           affinity, agent, "--version"]
+           "affinity.sh", "agent", "--version"]
     verbose("cmd: " + str(cmd))
 
     environment = setup_environment()
@@ -204,11 +230,11 @@ def lines2params(lines):
 
 def run_exaepi(work_dir, run_dir, input_cfg, agent_out):
     import subprocess
-    agent = work_dir + "/agent"
-    check_exes(work_dir)
+    # agent = work_dir + "/agent"
+    # check_exes(work_dir)
 
-    cmd = ["mpiexec", "-n", "1", "-launcher", "fork", "affinity.sh",
-           agent, input_cfg]
+    cmd = ["mpiexec", "-n", "1", "-launcher", "fork",
+           "affinity.sh", "agent", input_cfg]
     verbose("cmd: " + str(cmd))
 
     environment = setup_environment()
