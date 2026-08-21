@@ -251,3 +251,27 @@ NOTE: Our JSON is slightly malformed with literal NLs in the `output_dat` entry.
 . Run with `./log2pqt`
 . Preview  the Parquet with `./show_pqt`
 . Validate the Parquet with `./validate_pqt`
+
+== Ablation study
+
+Plan:
+
+* Use variable `OPTZ_IO` to control I/O
+* Run `agent`, `affinity.sh` from `PATH`
+** May be local store if startup hook executed
+** Else `TURBINE_OUTPUT`
+* Data is in `DATA_DIR`
+** May be local store if startup hook executed
+** Else `TURBINE_OUTPUT`
+
+=== Optimized
+
+==== loop-replicates-aurora.sh
+
+LOCAL_DIR=/tmp/$USER/exaepi
+
+=== Ablate inputs
+
+==== loop-replicates-aurora.sh
+
+LOCAL_DIR: empty

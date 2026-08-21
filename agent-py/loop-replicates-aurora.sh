@@ -7,8 +7,6 @@ set -eu
 
 THIS=${0:h:A}
 
-source $THIS/settings-aurora-compute.sh
-
 if (( ${#*} != 4 ))
 then
   print "Provide TEMPLATE_CSV PARAMS_CSV REPLICATES OUTPUT_DIR"
@@ -21,17 +19,31 @@ PARAMS_CSV=${2:A}
 REPLICATES=$3
 export TURBINE_OUTPUT=${4:A}
 
+source $THIS/settings-aurora-compute.sh
+
 # export TURBINE_LOG=1
 
-export TURBINE_LEADER_HOOK_STARTUP=$( cat $THIS/hook.tcl )
+export LOCAL_DIR=/tmp/$USER/exaepi
 
-LOCAL_DIR=/tmp/$USER/exaepi
+if [[ $OPTZ_IO == *I* ]] {
+  export INPUT_DIR=$LOCAL_DIR
+  export TURBINE_LEADER_HOOK_STARTUP=$( cat $THIS/hook.tcl )
+} else {
+  export INPUT_DIR=$TURBINE_OUTPUT
+  cp -uv =agent =affinity.sh $TURBINE_OUTPUT
+  cp -uv $TEMPLATE_CFG       $TURBINE_OUTPUT/template.cfg
+}
+
+export PYTHONPATH=$LOCAL_DIR:$THIS:${PYTHONPATH:-}
 
 ENVS=( -e TEMPLATE_CFG
        -e PYTHONPATH
+       -e OPTZ_IO
+       -e LOCAL_DIR
+       -e INPUT_DIR
      )
 
-PATH=$LOCAL_DIR:$THIS:$PATH
+PATH=$LOCAL_DIR:$TURBINE_OUTPUT:$THIS:$PATH
 
 set -x
 which mpiexec swift-t

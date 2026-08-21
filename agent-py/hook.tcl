@@ -14,7 +14,7 @@ set rank [ adlb::comm_rank $comm ]
 
 # If I am rank=0, construct the list of files to copy
 set EMERGE_WF $env(HOME)/proj/EMERGE-WF
-set DATA_DIR   $EMERGE_WF/data-sets
+set DATA_DIR   $env(DATA_DIR)
 set file_tmplt $env(TEMPLATE_CFG)
 set file_cases $DATA_DIR/NM_Mar16.cases
 set file_pop   $DATA_DIR/urbanpop_nm.bin
