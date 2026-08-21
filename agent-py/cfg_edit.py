@@ -50,7 +50,8 @@ def parse_args():
     return parser.parse_args()
 
 
-def process_parse(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg):
+def process_parse(template_cfg, rundir, seed, urbanpop, cases,
+                  params, input_cfg):
     """
     template_cfg: original cfg on disk
     rundir:       directory in which ExaEpi should run and write data
@@ -61,18 +62,20 @@ def process_parse(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg
     """
 
     P = eval(params)
-    return process(template_cfg, rundir, seed, urbanpop, cases, P,
-                   input_cfg)
+    return process(template_cfg, rundir, seed, urbanpop, cases,
+                   P, input_cfg)
 
 
-def process(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg):
+def process(template_cfg, input_dir, run_dir, seed, urbanpop, cases,
+            params, input_cfg):
     """
     Edits the template_cfg creating the input_cfg for ExaEpi
     Always edits: seed, file locations
     Also edits:   anything in the given params
 
     template_cfg: original cfg on disk
-    rundir:       directory in which ExaEpi should run and write data
+    input_dir:    directory from which ExaEpi reads input data
+    run_dir:      directory in   which ExaEpi should run and write data
     seed:         int seed
     params:       dict of other parameters to modify (from CSV?)
     input_cfg:    ExaEpi input file generated here.
@@ -109,16 +112,16 @@ def process(template_cfg, rundir, seed, urbanpop, cases, params, input_cfg):
             output_lines.append(f"# {prefix}{key}{eq}{val}\n")
             output_lines.append(f"{prefix}{key}{eq}{seed}\n")
         elif key == "agent.urbanpop_filename":
-            new_val = os.path.join(rundir, urbanpop)
+            new_val = os.path.join(input_dir, urbanpop)
             output_lines.append(f"# {prefix}{key}{eq}{val}\n")
             output_lines.append(f"{prefix}{key}{eq}{new_val}\n")
         elif key == "disease.case_filename":
-            new_val = os.path.join(rundir, cases)
+            new_val = os.path.join(input_dir, cases)
             output_lines.append(f"# {prefix}{key}{eq}{val}\n")
             output_lines.append(f"{prefix}{key}{eq}{new_val}\n")
         elif key == "diag.output_filename":
             _, ext = os.path.splitext(val)
-            new_val = os.path.join(rundir, os.path.basename(val))
+            new_val = os.path.join(run_dir, os.path.basename(val))
             output_lines.append(f"# {prefix}{key}{eq}{val}\n")
             output_lines.append(f"{prefix}{key}{eq}{new_val}\n")
         elif key in key_targets:

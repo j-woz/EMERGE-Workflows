@@ -43,7 +43,7 @@ ENVS=( -e TEMPLATE_CFG
        -e INPUT_DIR
      )
 
-PATH=$LOCAL_DIR:$TURBINE_OUTPUT:$THIS:$PATH
+PATH=$INPUT_DIR:$TURBINE_OUTPUT:$THIS:$PATH
 
 set -x
 which mpiexec swift-t

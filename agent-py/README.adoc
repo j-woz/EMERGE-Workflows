@@ -252,6 +252,15 @@ NOTE: Our JSON is slightly malformed with literal NLs in the `output_dat` entry.
 . Preview  the Parquet with `./show_pqt`
 . Validate the Parquet with `./validate_pqt`
 
+== Tools
+
+`show-log`::
+Show the log:
++
+----
+$ show-log results.log | less
+----
+
 == Ablation study
 
 Plan:
@@ -260,8 +269,8 @@ Plan:
 * Run `agent`, `affinity.sh` from `PATH`
 ** May be local store if startup hook executed
 ** Else `TURBINE_OUTPUT`
-* Data is in `DATA_DIR`
-** May be local store if startup hook executed
+* Data originates in `DATA_DIR`, copied to `INPUT_DIR`
+** May be `LOCAL_DIR` if startup hook executed
 ** Else `TURBINE_OUTPUT`
 
 === Optimized

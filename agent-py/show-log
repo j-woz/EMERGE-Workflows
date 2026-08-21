@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# SHOW LOG
+
+if [ $# != 1 ]
+then
+    echo "Provide 1 LOG!"
+    exit 1
+fi
+
+tr -d '\0' < $1

@@ -18,7 +18,7 @@ set DATA_DIR   $env(DATA_DIR)
 set file_tmplt $env(TEMPLATE_CFG)
 set file_cases $DATA_DIR/NM_Mar16.cases
 set file_pop   $DATA_DIR/urbanpop_nm.bin
-set file_agent $DATA_DIR/agent
+set file_agent $env(AGENT_ORIGIN)
 set file_aff   $EMERGE_WF/agent-py/affinity.sh
 
 if { $rank == 0 } {

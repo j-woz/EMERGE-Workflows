@@ -21,7 +21,7 @@ LOCAL_DIR/runs/{0000001,0000002,0000003,...}/
 A run_dir contains the input.cfg and agent.out and output.dat
 """
 
-import os, sys, time, traceback, json
+import json, os, subprocess, sys, time, traceback
 
 import cfg_edit
 
@@ -31,31 +31,15 @@ VERBOSE = False
 def get_installation():
     """
     Get the ExaEpi installation directory
-    return: string of stdout from '/usr/bin/which agent'
+    Set at workflow startup time, don't actually need to run
+    '/usr/bin/which agent'
     """
-    import subprocess
-    # check_exes(work_dir)
 
-    print("get_installation() ...", flush=True)
-
-    cmd = ["/usr/bin/which", "agent"]
-
-    verbose("cmd: " + str(cmd))
-
-    child = subprocess.run(cmd,
-                           stdout = subprocess.PIPE,
-                           text   = True)
-    if child.returncode != 0:
-        print("exaepi_agent.get_installation(): " +
-              "exit code from which: %i" % child.returncode,
-              flush=True)
-        print(child.stdout)
-        exit(1)
-
-    result = child.stdout.strip()
-    print("get_installation(): " + result, flush=True)
+    which_agent()
+    result = os.getenv("AGENT_ORIGIN")
 
     return result
+
 
 def get_version():
     """
@@ -63,9 +47,6 @@ def get_version():
     return: string of stdout from 'agent --version'
             (the AMReX and ExaEpi version lines)
     """
-    import subprocess
-    user     = os.getenv("USER")
-    work_dir = f"/tmp/{user}/exaepi"
 
     cmd = ["mpiexec", "-n", "1", "-launcher", "fork",
            "affinity.sh", "agent", "--version"]
@@ -74,7 +55,6 @@ def get_version():
     environment = setup_environment()
 
     child = subprocess.run(cmd,
-                           cwd    = work_dir,
                            env    = environment,
                            stdout = subprocess.PIPE,
                            text   = True)
@@ -97,6 +77,27 @@ def get_version():
         #    for user inspection (without NLs!)
         result = s.replace('\n', ' ')
 
+    return result
+
+
+def which_agent():
+    print("which_agent() ... ", flush=True)
+
+    cmd = ["/usr/bin/which", "agent"]
+    verbose("cmd: " + str(cmd))
+
+    child = subprocess.run(cmd,
+                           stdout = subprocess.PIPE,
+                           text   = True)
+    if child.returncode != 0:
+        print("exaepi_agent.which_agent(): " +
+              "exit code from which: %i" % child.returncode,
+              flush=True)
+        print(child.stdout)
+        exit(1)
+
+    result = child.stdout.strip()
+    print("which_agent(): " + result, flush=True)
     return result
 
 
@@ -123,15 +124,11 @@ def run(task_id, template_cfg, seed, urbanpop, cases, params):
 
     local_dir = os.getenv("LOCAL_DIR")
     input_dir = os.getenv("INPUT_DIR")
-    run_dir   = f"{LOCAL_DIR}/runs/{task_id:07d}"
+    run_dir   = f"{local_dir}/runs/{task_id:07d}"
     # ExaEpi input file to generate and run:
-    input_cfg = f"{input_dir}/input.cfg"
+    input_cfg = f"{run_dir}/input.cfg"
     # stdout/stderr from ExaEpi agent:
     agent_out = f"{run_dir}/agent.out"
-
-    global rank_self
-    rank_self = int(os.getenv("ADLB_RANK_SELF"))
-    # agent_out = os.getenv("TURBINE_OUTPUT") + "/rank-%02i.out" % rank_self
 
     verbose("exaepi_agent: template_cfg: " + template_cfg)
     verbose("exaepi_agent: input_cfg:    " + input_cfg)
@@ -139,15 +136,15 @@ def run(task_id, template_cfg, seed, urbanpop, cases, params):
 
     os.makedirs(run_dir, exist_ok=True)
 
-    cfg_id = cfg_edit_checked(template_cfg, run_dir, seed,
-                              f"{work_dir}/{urbanpop}",
-                              f"{work_dir}/{cases}",
+    cfg_id = cfg_edit_checked(template_cfg, input_dir, run_dir, seed,
+                              f"{input_dir}/{urbanpop}",
+                              f"{input_dir}/{cases}",
                               params, input_cfg)
 
     # print("PATH: " + os.getenv("PATH"))
 
     start = time.time()
-    run_exaepi(work_dir, run_dir, input_cfg, agent_out)
+    run_exaepi(run_dir, input_cfg, agent_out)
     stop  = time.time()
 
     # D: dict of results
@@ -160,12 +157,14 @@ def run(task_id, template_cfg, seed, urbanpop, cases, params):
     return result
 
 
-def cfg_edit_checked(template_cfg, run_dir, seed, urbanpop, cases,
+def cfg_edit_checked(template_cfg, input_dir, run_dir,
+                     seed, urbanpop, cases,
                      params, input_cfg):
     """ Do cfg_edit, crash on Exceptions """
     try:
-        cfg_id = cfg_edit.process(template_cfg, run_dir, seed,
-                                  urbanpop, cases, params, input_cfg)
+        cfg_id = cfg_edit.process(template_cfg, input_dir, run_dir,
+                                  seed, urbanpop, cases,
+                                  params, input_cfg)
     except Exception as e:
         print("exaepi_agent.run(): Exception in cfg_edit!")
         print("exaepi_agent.run(): " + str(e))
@@ -229,10 +228,7 @@ def lines2params(lines):
     return params
 
 
-def run_exaepi(work_dir, run_dir, input_cfg, agent_out):
-    import subprocess
-    # agent = work_dir + "/agent"
-    # check_exes(work_dir)
+def run_exaepi(run_dir, input_cfg, agent_out):
 
     cmd = ["mpiexec", "-n", "1", "-launcher", "fork",
            "affinity.sh", "agent", input_cfg]
@@ -300,7 +296,6 @@ def check_child(child, fp):
 
 def get_results(run_dir):
     """ Read ExaEpi agent output and pack into a dict """
-    import json
     agent_out = f"{run_dir}/agent.out"
     agent_dat = f"{run_dir}/output.dat"
     day_final = 0
