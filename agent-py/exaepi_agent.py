@@ -121,10 +121,11 @@ def run(task_id, template_cfg, seed, urbanpop, cases, params):
     return:       string of JSON containing important result values
     """
 
-    local_dir   = os.getenv("LOCAL_DIR")
-    run_dir    = f"{LOCAL_DIR}/runs/{task_id:07d}"
+    local_dir = os.getenv("LOCAL_DIR")
+    input_dir = os.getenv("INPUT_DIR")
+    run_dir   = f"{LOCAL_DIR}/runs/{task_id:07d}"
     # ExaEpi input file to generate and run:
-    input_cfg = f"{run_dir}/input.cfg"
+    input_cfg = f"{input_dir}/input.cfg"
     # stdout/stderr from ExaEpi agent:
     agent_out = f"{run_dir}/agent.out"
 
