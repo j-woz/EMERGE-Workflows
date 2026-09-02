@@ -20,7 +20,10 @@ import agent;
 
 import csv_get;
 
-// Command Line Arguments:
+assert(argc() == 6,
+       "loop-local-replicates.swift: " +
+       "template_cfg params_csv replicates " +
+       "urbanpop cases result_file");
 string template_cfg = argp(1);
 string params_csv     = argp(2);
 int    replicates   = string2int(argp(3));
