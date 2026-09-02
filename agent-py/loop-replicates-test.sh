@@ -52,5 +52,7 @@ export PATH=$INPUT_DIR:$PATH
 #   chmod u+x       $AFFINITY
 # }
 
+set -x
+which swift-t
 swift-t -p -n 10 loop-local-replicates.swift template.cfg $PARAMS 2 \
         urbanpop_nm.bin NM_Mar16.cases results.log
