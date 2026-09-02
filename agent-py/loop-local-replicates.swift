@@ -20,16 +20,12 @@ import agent;
 
 import csv_get;
 
-assert(argc() == 6,
-       "loop-local-replicates.swift: " +
-       "template_cfg params_csv replicates " +
-       "urbanpop cases result_file");
-string template_cfg = argp(1);
-string params_csv     = argp(2);
-int    replicates   = string2int(argp(3));
-string urbanpop     = argp(4);
-string cases        = argp(5);
-string result_file  = argp(6);
+arguments(string template_cfg : "ExaEpi cfg file template",
+          string params_csv   : "CSV of parameters to run",
+          int    replicates   : "Number of iterations per CSV line",
+          string urbanpop     : "ExaEpi UrbanPop data file",
+          string cases        : "ExaEpi cases data file",
+          string result_file  : "Final output result log");
 
 assert(turbine_workers() >= 3, "need at least 3 workers!");
 
