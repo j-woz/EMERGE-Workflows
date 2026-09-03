@@ -159,7 +159,7 @@ def write_values(filename, envs, kvs):
 
 def do_open_write(filename):
     global fp_write
-    print("result_log: open:  '%s'" % filename, flush=True)
+    # print("result_log: open:  '%s'" % filename, flush=True)
     fp_write = open(filename, "wb", buffering=WRITE_BUFFER_SIZE)
 
 
@@ -177,7 +177,7 @@ def do_write(filename, record):
     global fp_write
     try:
         if fp_write == None: do_open_write(filename)
-        print("result_log: write: '%s'" % filename, flush=True)
+        # print("result_log: write: '%s'" % filename, flush=True)
         B = bytearray(BLOCK_SIZE)
         B[:len(record)] = record.encode("utf-8")
         fp_write.write(B)
