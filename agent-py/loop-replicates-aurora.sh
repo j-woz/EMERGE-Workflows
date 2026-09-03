@@ -64,6 +64,6 @@ ENVS=( -e TEMPLATE_CFG
      )
 
 set -x
-which mpiexec swift-t
+which swift-t
 swift-t -m pbs -n $PROCS $ENVS loop-local-replicates.swift \
         $PARAMS_CSV $REPLICATES $TURBINE_OUTPUT/results.log
