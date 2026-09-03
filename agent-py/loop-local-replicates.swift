@@ -50,10 +50,12 @@ result_log_write(string filename, string record)
 {
   // Writes a simulation record to the log
   // Need triple-quote: record strings contain NLs
-  @location=RL
-    python_persist("import result_log",
-                   "result_log.do_write(\"%s\", \"\"\"%s\"\"\")" %
-                   (filename, record));
+  if (find(getenv("OPTZ_IO"), "O", 0, -1) >= 0 ) {
+    @location=RL
+      python_persist("import result_log",
+                     "result_log.do_write(\"%s\", \"\"\"%s\"\"\")" %
+                     (filename, record));
+  }
 }
 
 printf("params_csv: " + params_csv);
