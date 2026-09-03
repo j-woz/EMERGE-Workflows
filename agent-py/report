@@ -1,0 +1,17 @@
+#!/bin/zsh
+set -eu
+
+THIS=${0:h:A}
+source $THIS/../common/tools.zsh
+
+args DIR - ${*}
+
+if [[ ! -d $DIR ]] abort "No DIR=$DIR"
+
+printf "JOB:    "
+cat $DIR/jobid.txt | head -c 7
+print
+
+$THIS/log-size 64 $DIR
+
+grep "Elapsed Time" $DIR/output.txt

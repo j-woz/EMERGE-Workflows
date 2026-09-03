@@ -1,0 +1,16 @@
+#!/bin/zsh -f
+set -eu
+
+THIS=${0:h:A}
+source $THIS/../common/tools.zsh
+
+args BLOCK_KB DIR - ${*}
+
+LOG=$DIR/results.log
+if [[ ! -f $LOG ]] abort "No LOG=$LOG"
+
+zmodload zsh/stat
+zstat +size -A SIZE $LOG
+
+if (( $SIZE % (BLOCK_KB*1024) != 0 )) abort "Funny size: $SIZE"
+print "BLOCKS:" $[ $SIZE / (BLOCK_KB*1024) ]
