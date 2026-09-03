@@ -20,12 +20,14 @@ import agent;
 
 import csv_get;
 
-arguments(string template_cfg : "ExaEpi cfg file template",
-          string params_csv   : "CSV of parameters to run",
+arguments(string params_csv   : "CSV of parameters to run",
           int    replicates   : "Number of iterations per CSV line",
-          string urbanpop     : "ExaEpi UrbanPop data file",
-          string cases        : "ExaEpi cases data file",
           string result_file  : "Final output result log");
+
+input_dir = getenv("INPUT_DIR");
+template_cfg = input_dir / "template.cfg";
+pop_bin      = input_dir / "pop.bin";
+cases_data   = input_dir / "cases.data";
 
 assert(turbine_workers() >= 3, "need at least 3 workers!");
 
@@ -60,7 +62,8 @@ printf("params_csv: " + params_csv);
 location CSV_GET = locationFromRank(turbine_workers()-2);
 
 (int r)
-run_recursive(string params_csv, location CSV_GET, int level)
+run_recursive(string template_cfg, string pop_bin, string cases_data,
+              string params_csv, location CSV_GET, int level)
 {
   string csv_lines = csv_get1(params_csv, CSV_GET);
   // printf("csv_lines: " + csv_lines);
@@ -71,14 +74,16 @@ run_recursive(string params_csv, location CSV_GET, int level)
   }
   else
   {
-    r = run_replicates(CSV_GET, level, csv_lines) +
-        run_recursive (params_csv, CSV_GET, level + 1);
+    r = run_replicates(template_cfg, pop_bin, cases_data,
+                       CSV_GET, level, csv_lines) +
+        run_recursive (template_cfg, pop_bin, cases_data,
+                       params_csv, CSV_GET, level + 1);
   }
 }
 
 (int r)
-run_replicates(location CSV_GET,
-               int level, string csv_lines)
+run_replicates(string template_cfg, string pop_bin, string cases_data,
+               location CSV_GET, int level, string csv_lines)
 {
   int A[];
   foreach seed in [0:replicates-1]
@@ -86,7 +91,7 @@ run_replicates(location CSV_GET,
     // printf("agent: level=%i, seed=%i", level, seed);
     task_id = level * replicates + seed;
     result = agent_csv_lines(task_id, template_cfg,
-                             seed, urbanpop, cases, csv_lines);
+                             pop_bin, cases_data, seed, csv_lines);
     // printf("result: '%s'", result);
     result_log_write(result_file, result);
     A[seed] = bool2int(strlen(result) > 0);
@@ -107,8 +112,8 @@ kv_array = [
                "date="           + time_string,
                "template="       + realpath_string(template_cfg),
                "params_csv="     + realpath_string(params_csv),
-               "urbanpop="       + realpath_string(urbanpop),
-               "cases="          + realpath_string(cases),
+               "urbanpop="       + realpath_string(pop_bin),
+               "cases="          + realpath_string(cases_data),
                "replicates=%i"   % replicates,
                "site="           + site,
                "exaepi_install=" + ee_install,
@@ -119,6 +124,7 @@ kvs = join(kv_array, ",");
 // Write the result.log header:
 result_log_vars(result_file, envs, kvs) =>
 // Kick off the workflow:
-int N = run_recursive(params_csv, CSV_GET, 0);
+int N = run_recursive(template_cfg, pop_bin, cases_data,
+                      params_csv, CSV_GET, 0);
 // Report a final count:
 printf("total runs: %i", N);

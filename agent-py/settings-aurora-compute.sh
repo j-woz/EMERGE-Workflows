@@ -8,8 +8,7 @@
 SFW=/lus/flare/projects/EpiCalib/sfw
 EXAEPI=$SFW/ExaEpi_mpich-git_2026-06-10
 MPICH=$SFW/mpich-git
-# SWIFT=$SFW/swift-t/2026-04-16
-SWIFT=/lus/flare/projects/workflow_scaling/sfw/swift-t/2026-07-25
+SWIFT=$SFW/swift-t/2026-09-02
 
 PATH=$THIS:$EXAEPI/bin:$SWIFT/stc/bin:$MPICH/bin:$PATH
 
@@ -36,7 +35,7 @@ export OPTZ_IO="O"
 # See https://docs.alcf.anl.gov/aurora/running-jobs-aurora/#submitting-a-job
 export TURBINE_DIRECTIVE="#PBS -l filesystems=home:flare"
 
-# # This is needed for our plain MPICH configuration:
-# export TURBINE_PRELAUNCH="export LD_LIBRARY_PATH=$MPICH/lib:\${LD_LIBRARY_PATH:-}"
+# For libimf
+export TURBINE_PRELAUNCH="export LD_LIBRARY_PATH=/opt/aurora/26.181.0/oneapi/compiler/latest/lib:\${LD_LIBRARY_PATH:-}"
 
 PS4='+ '

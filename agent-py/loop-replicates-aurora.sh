@@ -2,38 +2,59 @@
 set -eu
 
 # LOOP REPLICATES AURORA SH
-# All arguments passed to workflow
 # See README
 
 THIS=${0:h:A}
 
-if (( ${#*} != 4 ))
-then
-  print "Provide TEMPLATE_CSV PARAMS_CSV REPLICATES OUTPUT_DIR"
-  return 1
-fi
+source $THIS/../common/tools.zsh
+
+args TEMPLATE_ORIGIN POP_BIN_ORIGIN CASES_ORIGIN PARAMS_CSV_ORIGIN \
+     REPLICATES OUTPUT_DIR - ${*}
 
 # Convert user arguments to Absolute paths:
-export TEMPLATE_CFG=${1:A}
-PARAMS_CSV=${2:A}
-REPLICATES=$3
-export TURBINE_OUTPUT=${4:A}
+export TEMPLATE_ORIGIN=${TEMPLATE_ORIGIN:A}
+export POP_BIN_ORIGIN=${POP_BIN_ORIGIN:A}
+export CASES_ORIGIN=${CASES_ORIGIN:A}
+export PARAMS_CSV=${PARAMS_CSV_ORIGIN:A}
+export TURBINE_OUTPUT=${OUTPUT_DIR:A}
+
+# Copied locations for direct use or broadcast
+export TEMPLATE_CFG=$TURBINE_OUTPUT/template.cfg
+export POP_BIN=$TURBINE_OUTPUT/pop.bin
+export CASES_DATA=$TURBINE_OUTPUT/cases.data
+
+# Customizable settings
+export OPTZ_IO="O"
+export LOCAL_DIR=/tmp/woz/exaepi
+export AGENT_ORIGIN==agent
+
+# Stage data
+mkdir -pv $TURBINE_OUTPUT
+cp -v $TEMPLATE_ORIGIN $TEMPLATE_CFG
+cp -v $POP_BIN_ORIGIN  $POP_BIN
+cp -v $CASES_ORIGIN    $CASES_DATA
+cp -uv $AGENT_ORIGIN $THIS/affinity.sh $TURBINE_OUTPUT
+bak $TURBINE_OUTPUT/data-origins.txt
+{
+  # Record original data locations for provenance
+  msg "DATA ORIGINS"
+  show AGENT_ORIGIN TEMPLATE_ORIGIN POP_BIN_ORIGIN CASES_ORIGIN
+} > $TURBINE_OUTPUT/data-origins.txt
 
 source $THIS/settings-aurora-compute.sh
 
-# export TURBINE_LOG=1
-
-export LOCAL_DIR=/tmp/$USER/exaepi
-
+set -x
 if [[ $OPTZ_IO == *I* ]] {
   export INPUT_DIR=$LOCAL_DIR
   export TURBINE_LEADER_HOOK_STARTUP=$( cat $THIS/hook.tcl )
 } else {
   export INPUT_DIR=$TURBINE_OUTPUT
-  cp -uv =agent =affinity.sh $TURBINE_OUTPUT
-  cp -uv $TEMPLATE_CFG       $TURBINE_OUTPUT/template.cfg
+
 }
 
+set +x
+
+export PATH=$INPUT_DIR:$PATH
 export PYTHONPATH=$LOCAL_DIR:$THIS:${PYTHONPATH:-}
 
 ENVS=( -e TEMPLATE_CFG
@@ -43,13 +64,9 @@ ENVS=( -e TEMPLATE_CFG
        -e INPUT_DIR
      )
 
-PATH=$INPUT_DIR:$TURBINE_OUTPUT:$THIS:$PATH
-
 set -x
 which mpiexec swift-t
 swift-t -m pbs -n $PROCS $ENVS loop-local-replicates.swift \
-        $LOCAL_DIR/template.cfg $PARAMS_CSV $REPLICATES \
-        urbanpop_nm.bin NM_Mar16.cases \
-        $TURBINE_OUTPUT/results.log
+        $PARAMS_CSV $REPLICATES $TURBINE_OUTPUT/results.log
 # template.cfg test-3.csv 2 \
 #         urbanpop_nm.bin NM_Mar16.cases results.log

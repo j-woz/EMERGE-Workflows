@@ -19,9 +19,9 @@ agent_version()
 
 /** params should be string of Python dict */
 (string result)
-agent_dict(int idx, string input_cfg, int seed,
+agent_dict(int idx, string input_cfg,
            string urbanpop, string cases,
-           string params)
+           int seed, string params)
 {
   result =
     python_persist
@@ -34,9 +34,9 @@ agent_dict(int idx, string input_cfg, int seed,
    task_id: A unique ID to identify this task
 */
 (string result)
-agent_csv_lines(int task_id, string input_cfg, int seed,
+agent_csv_lines(int task_id, string input_cfg,
                 string urbanpop, string cases,
-                string csv_lines)
+                int seed, string csv_lines)
 {
   // Need triple-quote - csv_lines contains NL
   result =
@@ -45,7 +45,9 @@ agent_csv_lines(int task_id, string input_cfg, int seed,
 import traceback
 import exaepi_agent
 try:
-    result = exaepi_agent.run_csv_lines(%i, \"%s\", %i, \"%s\", \"%s\", '''%s''')
+    result = exaepi_agent.run_csv_lines(idx=%i, template_cfg=\"%s\",
+                                        seed=%i, urbanpop=\"%s\",
+                                        cases=\"%s\", lines='''%s''')
 except Exception as e:
     print('exaepi_agent.run_csv_lines(): Exception: ' + str(e))
     print('', flush=True)

@@ -273,14 +273,39 @@ Plan:
 ** May be `LOCAL_DIR` if startup hook executed
 ** Else `TURBINE_OUTPUT`
 
-=== Optimized
-
-==== loop-replicates-aurora.sh
-
+----
 LOCAL_DIR=/tmp/$USER/exaepi
+^ but may be unused if not optimized
+----
 
-=== Ablate inputs
+=== Normal paths: `OPTZ_IO="_"`
+
+No startup hook.
+
+----
+INPUT_DIR=$TURBINE_OUTPUT
+RUN_DIR=$INPUT_DIR/run/001
+agent, affinity.sh, POP, CASES in INPUT_DIR
+INPUT_DIR in PATH
+TEMPLATE copied to TURBINE_OUTPUT/template.cfg, filtered to RUN_DIR
+----
+
+=== Optimized `OPTZ_IO="I"`
+
+----
+INPUT_DIR=$LOCAL_DIR
+INPUT_DIR in PATH
+agent, affinity.sh, POP, CASES in INPUT_DIR
+TEMPLATE copied to TURBINE_OUTPUT/template.cfg
+  then broadcasted to INPUT_DIR/template.cfg
+----
+
+=== Optimize
 
 ==== loop-replicates-aurora.sh
 
 LOCAL_DIR: empty
+
+=== Optimized `OPTZ_IO="IO"`
+
+==== loop-replicates-aurora.sh

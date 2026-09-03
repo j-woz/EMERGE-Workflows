@@ -26,7 +26,7 @@ import json, os, subprocess, sys, time, traceback
 import cfg_edit
 
 rank_self = -1
-VERBOSE = False
+VERBOSE = True
 
 def get_installation():
     """
@@ -114,22 +114,32 @@ def run(task_id, template_cfg, seed, urbanpop, cases, params):
     """
     Runs ExaEpi agent in local run_dir and extract resulting data
     task_id:      int unique task identifier from workflow logic
-    template_cfg: string filename of original cfg (usually in /tmp)
+    template_cfg: string filename of template.cfg
     seed:         int random seed
-    urbanpop:     string of urbanpop basename, assumed in work_dir
-    cases:        string of cases basename, assumed in work_dir
+    urbanpop:     string full pathname for urbanpop
+    cases:        string full pathname for cases
     params:       dict of other parameters to modify
     return:       string of JSON containing important result values
     """
 
+    environment = setup_environment()
+
+    OPTZ_IO   = os.getenv("OPTZ_IO")
     local_dir = os.getenv("LOCAL_DIR")
     input_dir = os.getenv("INPUT_DIR")
-    run_dir   = f"{local_dir}/runs/{task_id:07d}"
+    if "I" in OPTZ_IO:
+        run_dir = f"{local_dir}/runs/{task_id:07d}"
+    else:
+        output_dir = os.getenv("TURBINE_OUTPUT")
+        run_dir = f"{output_dir}/runs/{task_id:07d}"
     # ExaEpi input file to generate and run:
     input_cfg = f"{run_dir}/input.cfg"
     # stdout/stderr from ExaEpi agent:
     agent_out = f"{run_dir}/agent.out"
 
+    verbose("exaepi_agent: local_dir:    " + local_dir)
+    verbose("exaepi_agent: input_dir:    " + input_dir)
+    verbose("exaepi_agent: run_dir:      " + run_dir)
     verbose("exaepi_agent: template_cfg: " + template_cfg)
     verbose("exaepi_agent: input_cfg:    " + input_cfg)
     verbose("exaepi_agent: agent_out:    " + agent_out)
@@ -137,14 +147,14 @@ def run(task_id, template_cfg, seed, urbanpop, cases, params):
     os.makedirs(run_dir, exist_ok=True)
 
     cfg_id = cfg_edit_checked(template_cfg, input_dir, run_dir, seed,
-                              f"{input_dir}/{urbanpop}",
-                              f"{input_dir}/{cases}",
+                              f"{input_dir}/pop.bin",
+                              f"{input_dir}/cases.data",
                               params, input_cfg)
 
     # print("PATH: " + os.getenv("PATH"))
 
     start = time.time()
-    run_exaepi(run_dir, input_cfg, agent_out)
+    run_exaepi(environment, run_dir, input_cfg, agent_out)
     stop  = time.time()
 
     # D: dict of results
@@ -228,13 +238,11 @@ def lines2params(lines):
     return params
 
 
-def run_exaepi(run_dir, input_cfg, agent_out):
+def run_exaepi(environment, run_dir, input_cfg, agent_out):
 
     cmd = ["mpiexec", "-n", "1", "-launcher", "fork",
            "affinity.sh", "agent", input_cfg]
     verbose("cmd: " + str(cmd))
-
-    environment = setup_environment()
 
     touch(agent_out)
     with open(agent_out, "r+") as fp:
@@ -272,6 +280,11 @@ def setup_environment():
         del environment["PMIX_NAMESPACE"]
     environment["PMIX_MCA_psec"] = "none"
     environment["RANK"] = os.getenv("ADLB_RANK_SELF")
+    global rank_self
+    try:
+        rank_self = int(os.getenv("ADLB_RANK_SELF"))
+    except:
+        rank_self = -1000
     return environment
 
 

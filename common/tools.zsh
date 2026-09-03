@@ -1,4 +1,6 @@
 
+# TOOLS ZSH
+
 # For use in ${(%)DATE_FMT}
 DATE_FMT="%D{%Y-%m-%d} %D{%H:%M:%S}"
 
@@ -21,6 +23,17 @@ msgv()
   local TEXT
   printf -v TEXT "${@}"
   print ${(%)DATE_FMT} ${TEXT}
+}
+
+show()
+{
+  # Show value of given variables (by name)
+  # ZSH-only syntax
+  local v
+  for v in ${*}
+  do
+    print ${v}: ${(P)v:-UNSET}
+  done
 }
 
 # Expects 0 arguments:
@@ -156,6 +169,24 @@ grab-rank()
     fi
   done
   return -1
+}
+
+bak()
+# Move given file to numbered backup
+# If file does not exist, nothing to backup, no problem.
+{
+  local V
+  zparseopts -D -E v=V
+  if (( ${#} != 1 ))
+  then
+    echo "bak(): provide FILE!"
+    return 1
+  fi
+  local FILE=$1
+  if [[ -e $FILE ]]
+  then
+    mv $V --backup=numbered --no-target-directory $FILE $FILE.bak
+  fi
 }
 
 rm0()

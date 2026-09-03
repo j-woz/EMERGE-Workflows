@@ -156,6 +156,7 @@ def process(template_cfg, input_dir, run_dir, seed, urbanpop, cases,
     return result_id
 
 
+# Reused CSV info:
 csv_id = 0
 csv_fp = None
 csv_fields = None
