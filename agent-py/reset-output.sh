@@ -19,4 +19,5 @@ bak $DIR/jobid.txt
 bak $DIR/turbine-env.txt
 bak $DIR/turbine.log
 bak $DIR/turbine-pbs.sh
+bak -v $DIR/data-origins.txt
 bak -v $DIR/output.txt
