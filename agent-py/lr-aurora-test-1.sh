@@ -18,7 +18,7 @@ A=(
   # The params.csv
   test_params_100.csv
   # Number of replicates
-  3
+  100
   # Output directory
   ~/E/wozniak/EE-outs/out-test-100-_O
 )

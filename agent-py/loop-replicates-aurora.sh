@@ -23,6 +23,8 @@ export TEMPLATE_CFG=$TURBINE_OUTPUT/template.cfg
 export POP_BIN=$TURBINE_OUTPUT/pop.bin
 export CASES_DATA=$TURBINE_OUTPUT/cases.data
 
+source $THIS/settings-aurora-compute.sh
+
 # Customizable settings
 export OPTZ_IO="O"
 export LOCAL_DIR=/tmp/woz/exaepi
@@ -41,18 +43,14 @@ bak $TURBINE_OUTPUT/data-origins.txt
   show AGENT_ORIGIN TEMPLATE_ORIGIN POP_BIN_ORIGIN CASES_ORIGIN
 } > $TURBINE_OUTPUT/data-origins.txt
 
-source $THIS/settings-aurora-compute.sh
-
-set -x
 if [[ $OPTZ_IO == *I* ]] {
   export INPUT_DIR=$LOCAL_DIR
   export TURBINE_LEADER_HOOK_STARTUP=$( cat $THIS/hook.tcl )
 } else {
   export INPUT_DIR=$TURBINE_OUTPUT
-
 }
 
-set +x
+show INPUT_DIR
 
 export PATH=$INPUT_DIR:$PATH
 export PYTHONPATH=$LOCAL_DIR:$THIS:${PYTHONPATH:-}
