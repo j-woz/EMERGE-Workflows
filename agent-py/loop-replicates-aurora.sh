@@ -32,9 +32,9 @@ export AGENT_ORIGIN==agent
 
 # Stage data
 mkdir -pv $TURBINE_OUTPUT
-cp -v $TEMPLATE_ORIGIN $TEMPLATE_CFG
-cp -v $POP_BIN_ORIGIN  $POP_BIN
-cp -v $CASES_ORIGIN    $CASES_DATA
+cp -uv $TEMPLATE_ORIGIN $TEMPLATE_CFG
+cp -uv $POP_BIN_ORIGIN  $POP_BIN
+cp -uv $CASES_ORIGIN    $CASES_DATA
 cp -uv $AGENT_ORIGIN $THIS/affinity.sh $TURBINE_OUTPUT
 bak $TURBINE_OUTPUT/data-origins.txt
 {
