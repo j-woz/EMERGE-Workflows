@@ -8,6 +8,8 @@ THIS=${0:h:A}
 
 source $THIS/../common/tools.zsh
 
+export OPTZ_IO=IO
+
 A=(
   # The ExaEpi template
   template.cfg

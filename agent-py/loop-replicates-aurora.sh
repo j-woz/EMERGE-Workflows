@@ -26,8 +26,8 @@ export CASES_DATA=$TURBINE_OUTPUT/cases.data
 source $THIS/settings-aurora-compute.sh
 
 # Customizable settings
-export OPTZ_IO="O"
-export LOCAL_DIR=/tmp/woz/exaepi
+export OPTZ_IO=${OPTZ_IO:-IO}
+export LOCAL_DIR=/tmp/$USER/exaepi
 export AGENT_ORIGIN==agent
 
 # Stage data
@@ -40,7 +40,8 @@ bak $TURBINE_OUTPUT/data-origins.txt
 {
   # Record original data locations for provenance
   msg "DATA ORIGINS"
-  show AGENT_ORIGIN TEMPLATE_ORIGIN POP_BIN_ORIGIN CASES_ORIGIN
+  show AGENT_ORIGIN TEMPLATE_ORIGIN POP_BIN_ORIGIN CASES_ORIGIN \
+       OPTZ_IO
 } > $TURBINE_OUTPUT/data-origins.txt
 
 if [[ $OPTZ_IO == *I* ]] {
@@ -66,5 +67,3 @@ set -x
 which mpiexec swift-t
 swift-t -m pbs -n $PROCS $ENVS loop-local-replicates.swift \
         $PARAMS_CSV $REPLICATES $TURBINE_OUTPUT/results.log
-# template.cfg test-3.csv 2 \
-#         urbanpop_nm.bin NM_Mar16.cases results.log
