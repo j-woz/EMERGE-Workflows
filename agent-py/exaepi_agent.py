@@ -127,7 +127,7 @@ def run(task_id, template_cfg, seed, urbanpop, cases, params):
     OPTZ_IO   = os.getenv("OPTZ_IO")
     local_dir = os.getenv("LOCAL_DIR")
     input_dir = os.getenv("INPUT_DIR")
-    if "I" in OPTZ_IO:
+    if "O" in OPTZ_IO:
         run_dir = f"{local_dir}/runs/{task_id:07d}"
     else:
         output_dir = os.getenv("TURBINE_OUTPUT")
