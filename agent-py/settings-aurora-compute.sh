@@ -27,10 +27,10 @@ export WALLTIME=${WALLTIME:-00:05:00}
 PROCS=${PROCS:-2}
 export PPN=${PPN:-2}
 
-export DATA_DIR=$HOME/proj/EMERGE-WF/data-sets
 # OPTZ_IO: Allowed values: "IO", "I", "O", ""
 # "I": Optimize inputs "O": Optimize outputs
-export OPTZ_IO="O"
+# Defaults to "IO", optimizing both
+export OPTZ_IO=${OPTZ_IO:-IO}
 
 # See https://docs.alcf.anl.gov/aurora/running-jobs-aurora/#submitting-a-job
 export TURBINE_DIRECTIVE="#PBS -l filesystems=home:flare"
