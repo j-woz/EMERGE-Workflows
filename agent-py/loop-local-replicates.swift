@@ -101,7 +101,8 @@ run_replicates(string template_cfg, string pop_bin, string cases_data,
   r = sum_integer(A);
 }
 
-printf("RUN STARTING: OPTZ_IO='%s'", getenv("OPTZ_IO"));
+printf("LOOP-REPLICATES RUN STARTING: OPTZ_IO='%s'",
+       getenv("OPTZ_IO"));
 
 // Specify some metadata for the result.log header:
 envs = "USER,PROCS,PPN,PWD";
