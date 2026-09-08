@@ -4,10 +4,18 @@ set -eu
 THIS=${0:h:A}
 source $THIS/../common/tools.zsh
 
+zparseopts -D -E n=N
 args BLOCK_KB DIR - ${*}
 
 LOG=$DIR/results.log
-if [[ ! -f $LOG ]] abort "No LOG=$LOG"
+if [[ ! -f $LOG ]] {
+  if (( ${#N} )) {
+    print "No results.log"
+    return
+  } else {
+    abort "No LOG=$LOG"
+  }
+}
 
 zmodload zsh/stat
 zstat +size -A SIZE $LOG
