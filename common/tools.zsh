@@ -221,3 +221,12 @@ rm0()
   if (( ${#FILES} == 0 )) return 0
   rm ${R} ${V} ${FILES}
 }
+
+exists()
+{
+  local F
+  for F in ${*}
+  do
+    if [[ ! -e $F ]] abort "exists(): Does not exist: $F"
+  done
+}
