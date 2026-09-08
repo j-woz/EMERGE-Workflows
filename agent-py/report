@@ -15,6 +15,13 @@ print
 
 $THIS/log-size $N 64 $DIR
 
+if (( ${#N} )) {
+  print "AMReX finalized"
+  find $DIR/runs -name agent.out | \
+    xargs -n 4 cat               | \
+    grep -c "AMReX.*finalized"
+}
+
 if ! grep "Elapsed Time" $DIR/output.txt
 then
   abort "No Elapsed Time!"
