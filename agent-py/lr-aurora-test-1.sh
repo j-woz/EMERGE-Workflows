@@ -8,9 +8,7 @@ THIS=${0:h:A}
 
 source $THIS/../common/tools.zsh
 
-export OPTZ_IO=IO
-
-N=185
+args OPTZ_IO N - ${*}
 
 A=(
   # The ExaEpi template
@@ -24,7 +22,7 @@ A=(
   # Number of replicates
   $N
   # Output directory
-  ~/E/wozniak/EE-outs/out-test-$N-IO
+  ~/E/wozniak/EE-outs/out-test-$OPTZ_IO-$N
 )
 
 set -x
