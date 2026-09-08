@@ -12,6 +12,8 @@ args DIR - ${*}
 
 if [[ ! -d $DIR ]] abort "Does not exist: $DIR"
 
+START=$SECONDS
+
 rm0 -v $DIR/*.tic $DIR/results.log
 rm0 -r $DIR/runs
 
@@ -21,3 +23,6 @@ bak $DIR/turbine.log
 bak $DIR/turbine-pbs.sh
 bak -v $DIR/data-origins.txt
 bak -v $DIR/output.txt
+
+STOP=$SECONDS
+printf "TOOK: %0.1f\n" $[ STOP - START ]
