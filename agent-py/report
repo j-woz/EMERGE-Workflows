@@ -4,9 +4,7 @@ set -eu
 THIS=${0:h:A}
 source $THIS/../common/tools.zsh
 
-echo -- ARGS ${*}
 zparseopts -D -E n=N
-echo -- ARGS ${*}
 args DIR - ${*}
 
 if [[ ! -d $DIR ]] abort "No DIR=$DIR"
@@ -17,4 +15,7 @@ print
 
 $THIS/log-size $N 64 $DIR
 
-grep "Elapsed Time2" $DIR/output.txt
+if ! grep "Elapsed Time" $DIR/output.txt
+then
+  abort "No Elapsed Time!"
+fi
