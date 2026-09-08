@@ -25,8 +25,10 @@ import json, os, subprocess, sys, time, traceback
 
 import cfg_edit
 
+
 rank_self = -1
-VERBOSE = True
+VERBOSE = False
+
 
 def get_installation():
     """
@@ -37,7 +39,6 @@ def get_installation():
 
     which_agent()
     result = os.getenv("AGENT_ORIGIN")
-
     return result
 
 
