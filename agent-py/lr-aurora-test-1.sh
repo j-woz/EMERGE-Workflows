@@ -9,6 +9,7 @@ THIS=${0:h:A}
 source $THIS/../common/tools.zsh
 
 args OPTZ_IO N - ${*}
+export OPTZ_IO
 
 A=(
   # The ExaEpi template
