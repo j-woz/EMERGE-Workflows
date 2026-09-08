@@ -14,7 +14,6 @@ set rank [ adlb::comm_rank $comm ]
 
 # If I am rank=0, construct the list of files to copy
 set EMERGE_WF  $env(HOME)/proj/EMERGE-WF
-set DATA_DIR   $env(DATA_DIR)
 set file_tmplt $env(TURBINE_OUTPUT)/template.cfg
 set file_cases $env(TURBINE_OUTPUT)/cases.data
 set file_pop   $env(TURBINE_OUTPUT)/pop.bin
