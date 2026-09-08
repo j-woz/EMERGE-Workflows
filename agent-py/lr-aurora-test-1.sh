@@ -11,6 +11,8 @@ source $THIS/../common/tools.zsh
 args OPTZ_IO N - ${*}
 export OPTZ_IO
 
+show OPTZ_IO N
+
 A=(
   # The ExaEpi template
   template.cfg
