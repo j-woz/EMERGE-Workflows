@@ -28,5 +28,7 @@ A=(
   ~/E/wozniak/EE-outs/out-test-$OPTZ_IO-$N
 )
 
+exists test_params_$N.csv
+
 set -x
 $THIS/loop-replicates-aurora.sh $A
