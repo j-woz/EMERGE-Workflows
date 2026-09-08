@@ -10,6 +10,8 @@ source $THIS/../common/tools.zsh
 
 export OPTZ_IO=IO
 
+N=185
+
 A=(
   # The ExaEpi template
   template.cfg
@@ -18,11 +20,11 @@ A=(
   # The cases.data
   $THIS/../data-sets/NM_Mar16.cases
   # The params.csv
-  test_params_100.csv
+  test_params_$N.csv
   # Number of replicates
-  100
+  $N
   # Output directory
-  ~/E/wozniak/EE-outs/out-test-100-_O
+  ~/E/wozniak/EE-outs/out-test-$N-IO
 )
 
 set -x
