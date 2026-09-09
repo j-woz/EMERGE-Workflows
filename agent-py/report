@@ -7,6 +7,8 @@ source $THIS/../common/tools.zsh
 zparseopts -D -E n=N
 args DIR - ${*}
 
+START=$SECONDS
+
 if [[ ! -d $DIR ]] abort "No DIR=$DIR"
 
 printf "JOB:    "
@@ -17,8 +19,8 @@ $THIS/log-size $N 64 $DIR
 
 if (( ${#N} )) {
   print "AMReX finalized"
-  find $DIR/runs -name agent.out | \
-    xargs -n 4 cat               | \
+  find $DIR/runs -name agent.out             | \
+    xargs --no-run-if-empty --max-args 4 cat | \
     grep -c "AMReX.*finalized"
 }
 
@@ -26,3 +28,6 @@ if ! grep "Elapsed Time" $DIR/output.txt
 then
   abort "No Elapsed Time!"
 fi
+
+STOP=$SECONDS
+printf "REPORT TOOK: %0.1f\n" $[ STOP - START ]
