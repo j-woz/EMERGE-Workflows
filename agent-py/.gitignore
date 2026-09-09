@@ -2,3 +2,6 @@
 .m2
 # log2pqt installation:
 target
+# Params inputs
+*.csv
+turbine-output
