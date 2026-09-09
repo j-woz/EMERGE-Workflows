@@ -10,11 +10,12 @@ show N
 
 exists ${SET}_params.csv
 
-head -$[N+1] ${SET}_params.csv > ${SET}_params_$N.csv
+OUTPUT=${SET}_params_$N.csv
+head -$[N+1] ${SET}_params.csv > $OUTPUT
 
 {
   printf "lines "
-  wc -l < ${SET}_params_$N.csv
+  wc -l < $OUTPUT
   printf "size  "
-  du -h   ${SET}_params_$N.csv
+  du -h --apparent-size $OUTPUT
 } | column -t
