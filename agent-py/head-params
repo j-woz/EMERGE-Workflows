@@ -1,0 +1,20 @@
+#!/bin/zsh
+set -eu
+
+THIS=${0:h:A}
+source $THIS/../common/tools.zsh
+
+args SET N - ${*}
+
+show N
+
+exists ${SET}_params.csv
+
+head -$[N+1] ${SET}_params.csv > ${SET}_params_$N.csv
+
+{
+  printf "lines "
+  wc -l < ${SET}_params_$N.csv
+  printf "size  "
+  du -h   ${SET}_params_$N.csv
+} | column -t
