@@ -15,6 +15,8 @@ printf "JOB:    "
 cat $DIR/jobid.txt | head -c 7
 print
 
+grep "NODES" $DIR/turbine.log | tail -1
+
 $THIS/log-size $N 64 $DIR
 
 if (( ${#N} )) {
