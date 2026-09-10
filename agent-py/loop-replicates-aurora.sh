@@ -23,6 +23,8 @@ export TEMPLATE_CFG=$TURBINE_OUTPUT/template.cfg
 export POP_BIN=$TURBINE_OUTPUT/pop.bin
 export CASES_DATA=$TURBINE_OUTPUT/cases.data
 
+export TURBINE_JOBNAME=EE-$OPTZ_IO
+
 source $THIS/settings-aurora-compute.sh
 
 # Customizable settings
