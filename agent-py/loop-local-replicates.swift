@@ -20,9 +20,11 @@ import agent;
 
 import csv_get;
 
-arguments(string params_csv   : "CSV of parameters to run",
-          int    replicates   : "Number of iterations per CSV line",
-          string result_file  : "Final output result log");
+arguments(string result_file  : "Final output result log",
+          string params_csv   : "CSV of parameters to run");
+flags(int replicates=1  : "Number of iterations per CSV line",
+      int seed_init=0   : "Replicate seed for start",
+      int streams=1     : "Number of output streams");
 
 input_dir = getenv("INPUT_DIR");
 template_cfg = input_dir / "template.cfg";
@@ -88,7 +90,7 @@ run_replicates(string template_cfg, string pop_bin, string cases_data,
                location CSV_GET, int level, string csv_lines)
 {
   int A[];
-  foreach seed in [0:replicates-1]
+  foreach seed in [seed_init:seed_init+replicates-1]
   {
     // printf("agent: level=%i, seed=%i", level, seed);
     task_id = level * replicates + seed;
@@ -101,8 +103,8 @@ run_replicates(string template_cfg, string pop_bin, string cases_data,
   r = sum_integer(A);
 }
 
-printf("LOOP-REPLICATES RUN STARTING: OPTZ_IO='%s'",
-       getenv("OPTZ_IO"));
+printf("LOOP-REPLICATES STARTING: OPTZ_IO='%s' SEED_INIT=%02i",
+       getenv("OPTZ_IO"), seed_init);
 
 // Specify some metadata for the result.log header:
 envs = "USER,PROCS,PPN,PWD";

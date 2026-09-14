@@ -9,7 +9,7 @@ THIS=${0:h:A}
 source $THIS/../common/tools.zsh
 
 args TEMPLATE_ORIGIN POP_BIN_ORIGIN CASES_ORIGIN PARAMS_CSV_ORIGIN \
-     REPLICATES OUTPUT_DIR - ${*}
+     REPLICATES SEED_INIT OUTPUT_DIR - ${*}
 
 # Convert user arguments to Absolute paths:
 export TEMPLATE_ORIGIN=${TEMPLATE_ORIGIN:A}
@@ -23,7 +23,8 @@ export TEMPLATE_CFG=$TURBINE_OUTPUT/template.cfg
 export POP_BIN=$TURBINE_OUTPUT/pop.bin
 export CASES_DATA=$TURBINE_OUTPUT/cases.data
 
-export TURBINE_JOBNAME=EE-$OPTZ_IO
+JOBNAME_DFLT="EE-$OPTZ_IO"
+export TURBINE_JOBNAME=${TURBINE_JOBNAME:-$JOBNAME_DFLT}
 
 source $THIS/settings-aurora-compute.sh
 
@@ -68,4 +69,4 @@ ENVS=( -e TEMPLATE_CFG
 set -x
 which swift-t
 swift-t -m pbs -n $PROCS $ENVS loop-local-replicates.swift \
-        $PARAMS_CSV $REPLICATES $TURBINE_OUTPUT/results.log
+        $PARAMS_CSV $REPLICATES $SEED_INIT $TURBINE_OUTPUT/results.log
