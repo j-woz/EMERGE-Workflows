@@ -4,8 +4,8 @@
 
 import atexit
 import json
+from os import getenv
 
-from datetime import datetime
 
 BLOCK_SIZE = 64 * 1024
 
@@ -15,6 +15,7 @@ BLOCK_SIZE = 64 * 1024
 WRITE_BUFFER_SIZE = 256 * BLOCK_SIZE
 
 fp_write = None
+
 
 def main():
     args = parse_args()
@@ -54,6 +55,8 @@ def cmd_extract(args):
 
 def cmd_stat(args):
     import os
+    from datetime import datetime
+
 
     file_size = os.path.getsize(args.filename)
     file_mtime = os.path.getmtime(args.filename)
@@ -110,19 +113,20 @@ def cmd_timing(args):
                 continue
             try:
                 entry = json.loads(entry_str)
-                if isinstance(entry, dict) and "start" in entry and "stop" in entry:
+                if isinstance(entry, dict) and "start" in entry and \
+                   "stop" in entry:
                     entries.append(entry)
             except json.JSONDecodeError:
                 pass
 
-    if not entries:
+    if len(entries) == 0:
         print("No timing events found in log file")
         return
 
     durations = []
     for entry in entries:
         start = float(entry["start"])
-        stop = float(entry["stop"])
+        stop  = float(entry["stop"])
         duration = stop - start
         durations.append(duration)
         print(f"Index {len(durations)-1}: {duration:.3f}s")
@@ -143,11 +147,10 @@ def write_values(filename, envs, kvs):
     envs: string: comma-separated list of environment variable names
     kvs:  string: comma-separated list key=value pairs
     """
-    import os
     D = {}
     names = envs.split(",")
     for name in names:
-        D[name] = str(os.getenv(name))
+        D[name] = str(getenv(name))
     pairs = kvs.split(",")
     for pair in pairs:
         kv = pair.split("=")
@@ -159,7 +162,10 @@ def write_values(filename, envs, kvs):
 
 def do_open_write(filename):
     global fp_write
-    # print("result_log: open:  '%s'" % filename, flush=True)
+    rank = int(getenv("ADLB_RANK_SELF"))
+    filename = f"{filename}-{rank:06d}.log"
+    print("result_log: open: rank=%i '%s'" % (rank, filename),
+          flush=True)
     fp_write = open(filename, "wb", buffering=WRITE_BUFFER_SIZE)
 
 
@@ -176,7 +182,7 @@ def do_write(filename, record):
 
     global fp_write
     try:
-        if fp_write == None: do_open_write(filename)
+        if fp_write is None: do_open_write(filename)
         # print("result_log: write: '%s'" % filename, flush=True)
         B = bytearray(BLOCK_SIZE)
         B[:len(record)] = record.encode("utf-8")
@@ -204,7 +210,8 @@ def do_close_auto():
     """
     global fp_write
     if fp_write is None: return
-    print("result_log: atexit: close.", flush=True)
+    rank = int(getenv("ADLB_RANK_SELF"))
+    print("result_log: atexit: close: rank=%i" % rank, flush=True)
     do_close()
 
 

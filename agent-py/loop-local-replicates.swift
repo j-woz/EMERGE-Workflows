@@ -20,25 +20,27 @@ import agent;
 
 import csv_get;
 
-arguments(string result_file  : "Final output result log",
+arguments(description         : "Run ExaEpi w/ multiple streams",
+          string result_file  : "Final output result log prefix",
           string params_csv   : "CSV of parameters to run");
 flags(int replicates=1  : "Number of iterations per CSV line",
       int seed_init=0   : "Replicate seed for start",
       int streams=1     : "Number of output streams");
 
-input_dir = getenv("INPUT_DIR");
+input_dir    = getenv("INPUT_DIR");
 template_cfg = input_dir / "template.cfg";
 pop_bin      = input_dir / "pop.bin";
 cases_data   = input_dir / "cases.data";
 
 assert(turbine_workers() >= 3, "need at least 3 workers!");
 
-// RL: The location for the Result Log:
-location RL = locationFromRank(turbine_workers()-1);
-
 (void v)
 result_log_vars(string filename, string envs, string kvs)
 {
+  // This record always goes into the 0th result log.
+  // RL: The location for the Result Log:
+  location RL = locationFromRank(turbine_workers() - streams - 1);
+
   // Writes a arbitrary data to the log
   t =
   @location=RL
@@ -48,8 +50,13 @@ result_log_vars(string filename, string envs, string kvs)
   v = propagate(t);
 }
 
-result_log_write(string filename, string record)
+result_log_write(int task_id, string filename, string record)
 {
+  // RL: The location for the Result Log:
+  int file_id = task_id %% streams;
+  int rank = turbine_workers() - streams + file_id - 1;
+  location RL = locationFromRank(rank);
+
   // Writes a simulation record to the log
   // Need triple-quote: record strings contain NLs
   if (find(getenv("OPTZ_IO"), "O", 0, -1) >= 0 ) {
@@ -97,7 +104,7 @@ run_replicates(string template_cfg, string pop_bin, string cases_data,
     result = agent_csv_lines(task_id, template_cfg,
                              pop_bin, cases_data, seed, csv_lines);
     // printf("result: '%s'", result);
-    result_log_write(result_file, result);
+    result_log_write(task_id, result_file, result);
     A[seed] = bool2int(strlen(result) > 0);
   }
   r = sum_integer(A);

@@ -9,7 +9,7 @@ THIS=${0:h:A}
 source $THIS/../common/tools.zsh
 
 args TEMPLATE_ORIGIN POP_BIN_ORIGIN CASES_ORIGIN PARAMS_CSV_ORIGIN \
-     REPLICATES SEED_INIT OUTPUT_DIR - ${*}
+     OUTPUT_DIR REPLICATES SEED_INIT - ${*}
 
 # Convert user arguments to Absolute paths:
 export TEMPLATE_ORIGIN=${TEMPLATE_ORIGIN:A}
@@ -66,7 +66,15 @@ ENVS=( -e TEMPLATE_CFG
        -e INPUT_DIR
      )
 
+WORKFLOW_ARGS=(
+  $PARAMS_CSV
+  $TURBINE_OUTPUT/results
+  --replicates=$REPLICATES
+  --seed_init=$SEED_INIT
+  --streams=2
+)
+
 set -x
 which swift-t
 swift-t -m pbs -n $PROCS $ENVS loop-local-replicates.swift \
-        $PARAMS_CSV $REPLICATES $SEED_INIT $TURBINE_OUTPUT/results.log
+        $WORKFLOW_ARGS
