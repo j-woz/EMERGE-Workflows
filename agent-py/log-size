@@ -5,9 +5,8 @@ THIS=${0:h:A}
 source $THIS/../common/tools.zsh
 
 zparseopts -D -E n=N
-args BLOCK_KB DIR - ${*}
+args BLOCK_KB LOG - ${*}
 
-LOG=$DIR/results.log
 if [[ ! -f $LOG ]] {
   if (( ${#N} )) {
     print "No results.log"
