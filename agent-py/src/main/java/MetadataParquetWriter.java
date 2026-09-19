@@ -18,6 +18,7 @@ import org.apache.parquet.schema.PrimitiveType;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -41,6 +42,10 @@ public final class MetadataParquetWriter
      Open a writer whose footer will carry metadata.  An empty map
      just means no extra footer entries.  The caller owns the
      returned writer and must close it.
+
+     The map is read when the writer closes, not when it opens, so
+     entries added while writing still reach the footer.  That lets a
+     caller that stops early mark the file as incomplete.
   */
   public static <T> ParquetWriter<T>
   open(MessageType schema, File file, Dehydrator<T> dehydrator,
@@ -111,7 +116,20 @@ public final class MetadataParquetWriter
     @Override
     public WriteContext init(Configuration configuration)
     {
-      return new WriteContext(schema, metadata);
+      // Empty: parquet-mr holds on to this map, and an entry given
+      // here would collide with the same key from finalizeWrite.
+      return new WriteContext(schema, new HashMap<>());
+    }
+
+    /**
+       Called as the writer closes.  Reading the caller's map here
+       rather than in init() means entries it added while writing --
+       notably an "incomplete" marker -- land in the footer.
+    */
+    @Override
+    public FinalizedWriteContext finalizeWrite()
+    {
+      return new FinalizedWriteContext(new HashMap<>(metadata));
     }
 
     @Override

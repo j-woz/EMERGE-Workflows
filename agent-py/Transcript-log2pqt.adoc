@@ -1,0 +1,427 @@
+
+:toc:
+:toclevels: 2
+
+= Transcript: `log2pqt` shell and Java layers
+
+Development transcript for the `log2pqt` work: append mode, duplicate
+detection, progress reporting, column selection, and the padding
+optimization.
+
+== About this record
+
+The prompts below are reproduced verbatim.  Responses are summarized,
+not quoted, since the full replies ran to many screens of tool output.
+
+NOTE: Per-message timestamps were not recorded during the session.  The
+times given for each phase are derived from the mtimes of the files
+written in that phase, so they mark when work *landed on disk* rather
+than when each prompt was typed.  Within a phase the prompt order is
+exact; the clock times are anchors, not a log.
+
+Timeline anchors actually on disk:
+
+[cols="2,3"]
+|===
+| Timestamp | Artifact
+
+| 2026-09-16 21:52 | `show_pqt.py` -- `--only-ids`
+| 2026-09-17 15:58 | `pom.xml` -- Commons CLI dependency
+| 2026-09-17 16:12 | `MetadataParquetWriter.java` -- `finalizeWrite`
+| 2026-09-17 16:33 | scaled test fixtures (57 MB each)
+| 2026-09-17 16:40 | `columns.txt`
+| 2026-09-17 16:49 | `log2pqt` -- final wrapper
+| 2026-09-19 15:04 | `LogToParquet.java` -- padding fix
+| 2026-09-19 15:12 | `README.adoc` -- documentation
+|===
+
+== Phase 1: Append mode
+
+_2026-09-15 / 2026-09-16_
+
+=== Opening request
+
+____
+extend the log2pqt tool so that it can handle cases like
+`/lus/flare/projects/EpiCalib/wozniak/EE-outs/out-1B-1-10` .  if
+provided with command line arguments `-a result.parquet`, it looks for
+all files that match `result*.log` in PWD , reports them, then adds
+them all to the output `result.parquet` file, even if the
+`result.parquet` file already exists.  it should skip inserting any
+duplicate `task_id` entries and report that as an error
+____
+
+First attempt put the glob in the zsh wrapper and passed the file list
+to Java.  Rejected.
+
+=== Moving the glob into Java
+
+____
+if provided with `-a` , it does not need to accept `INPUT_FILES`, it
+just looks in PWD for any matches
+____
+
+____
+no that still uses `INPUT_FILES` in the `-a` branch - that argument
+should not be there.  do the glob at the java level
+____
+
+Settled: the wrapper passes `-a <output>` only; `File.listFiles` in
+Java finds `result*.log` .
+
+=== Single pass
+
+____
+proceed but only make 1 pass through the log file - report any
+duplicates as you find them
+____
+
+____
+these files are too big to copy and append together.  Just extend the
+existing read loop to open the next file
+____
+
+This set the core design: one `ParquetWriter` held open across the whole
+set, with the read loop moving to the next file as each runs out.
+Nothing is staged or concatenated, so the 5.9 GB parts stream fine.
+
+=== Environment
+
+____
+look in PWD for the hidden m2 directory
+____
+
+The Maven repository is project-local at `./.m2/repository` .
+
+== Phase 2: Correctness constraints
+
+_2026-09-16, through 2026-09-16 21:52_
+
+=== Refuse an existing output
+
+____
+maven is now in PATH.  If output the Parquet file already exists,
+report an error and exit.
+____
+
+This resolved an ambiguity in the original request.  Parquet cannot be
+appended to in place, so "adds them all to the output file, even if it
+already exists" could not mean literal append.  Refusing an existing
+output makes the semantics explicit: the `result*.log` files present are
+the complete input.
+
+=== Inspection tooling
+
+____
+can you use show-pqt or validate-pqt for this?  or extend them if
+needed
+____
+
+____
+should that be called `--only-ids`
+____
+
+Added `show_pqt --only-ids` , which reads only the `row_id` column and
+reports distinct ids with row counts plus a duplicate check.
+
+=== Failing fast on duplicates
+
+____
+duplicates in the input should result in an error message and exit(1)
+____
+
+____
+check as you go- don't wait until the end to report an error.  report
+it asap
+____
+
+Changed from tallying duplicates and reporting at the end to stopping at
+the first repeat.
+
+____
+that's good but put the error handling in a separate function
+____
+
+A convention that recurred throughout: the condition stays inline, the
+report-and-exit moves to a named function.
+
+=== The partial output question
+
+____
+what is your plan here
+____
+
+Asked in response to a comment claiming the partial file was deleted
+when nothing deleted it.  `System.exit()` inside try-with-resources
+skips the writer's `close()` , leaving a footerless, unreadable stub
+that would also block the next run via the new exists-check.  Two
+options were put forward: delete the partial file, or keep it and fix
+the comment.
+
+____
+do 2.  add a note to the footer that the file is incomplete
+____
+
+This required the abort to unwind rather than call `System.exit` , so
+the writer closes and the footer is written.  `MetadataParquetWriter`
+gained a `finalizeWrite()` override so metadata added *during* writing
+still reaches the footer.  A duplicate now leaves valid Parquet carrying
+an `incomplete` key that states the reason.
+
+____
+do that but put the contents of the exception handler in a function
+____
+
+=== Header block validation
+
+____
+yes, the b log does not have a header.  They were generated in two
+parts, the idea is that the whole dataset is split across the two
+files.  check that the first file provided has the correct header
+block
+____
+
+The run writes its header once, at the top of the first part.  Its
+absence from the first sorted file means the set is incomplete, so that
+is now an error.
+
+____
+that's good but put the error branch in a separate function
+____
+
+== Phase 3: Progress reporting
+
+_2026-09-17, through 2026-09-17 16:12_
+
+____
+add a feature so that if provided `log2pqt -P` a progress message is
+displayed, updating like "Progress: 32%" and redrawing over the line
+with carriage return for every percent of progress
+____
+
+The percentage runs over the byte total of the whole file set, so it
+climbs 0-100 once rather than restarting per file, and redraws only when
+the whole-number percent advances.  Verified at exactly 101 updates on
+both the full and scaled runs.
+
+=== Option parsing
+
+____
+is there a good java getopts library we should use
+____
+
+Options presented: Commons CLI, picocli, JCommander, or hand-rolled.
+Recommendation at the time was hand-rolled, given two flags.
+
+____
+hand-rolled is fine, keep it simple
+____
+
+____
+i changed my mind - use Apache commons.  is that just a Maven addition?
+____
+
+Yes -- one dependency block; the assembly plugin folds it into the fat
+jar.  Commons CLI 1.9.0 downloaded into the project `.m2` .
+
+=== Wrapper iterations
+
+____
+in the wrapper script use zparseopts
+____
+
+____
+just don't use `-F` and let the java layer handle any extra args.  we
+don't need to check args fully at the zsh level
+____
+
+This zsh is 5.6, which has no `zparseopts -F` .
+
+____
+in zsh, use print, not echo
+____
+
+== Phase 4: Working conventions
+
+_2026-09-17_
+
+____
+from now on put any needed tmp files in a tmp directory in PWD.  at the
+end, report timing and read bandwidth in MB/s.  use smaller files for
+testing by a factor of 10
+____
+
+Three standing preferences, saved to project memory.  Test fixtures were
+cut from the 5.9 GB originals to 568 MB, then to 57 MB.
+
+____
+did you make smaller test data files
+____
+
+____
+report those stats from the java program so they are always reported
+____
+
+Byte accounting moved out of the `-P` branch so it accumulates
+unconditionally; both modes now call a shared `reportRate` .
+
+____
+use millis instead of nanoTime
+____
+
+____
+is it possible for you to print your proposed shell commands wrapped
+with one command per line for easier reading?
+____
+
+== Phase 5: Column selection
+
+_2026-09-17, through 2026-09-17 16:49_
+
+____
+look at columns.txt .  let log2pqt accept an optional `-c columns.txt`
+.  if present, only the columns named in that columns.txt file are
+added to the Parquet schema and output file.  the column name tokens
+are white-space separated, and the file should support any whitespace
+and comments with hash as shown .  if there is a good library to parse
+such files, use it
+____
+
+`StreamTokenizer` from the JDK handles whitespace splitting and `#`
+comments natively, so no dependency was added.  Selected names are
+reordered to the reference column order, and an unrecognized name is an
+error rather than a silent omission.
+
+=== Collapsing the wrapper
+
+____
+in zsh, can you put all of those flags into the same array?
+____
+
+____
+use the merged array, drop the check for input files at the zsh level
+____
+
+____
+at this point, do we need zparseopts, or should we just pass everything
+to java
+____
+
+____
+yes, drop zparseopts and just pass everything through
+____
+
+With the input-file check gone, the wrapper did nothing with the parsed
+flags except hand them back in the same order.  `zparseopts` and
+`zmodload zsh/zutil` were removed entirely; the wrapper now passes
+`"$@"` straight to Java.
+
+== Phase 6: Performance investigation
+
+_2026-09-17 / 2026-09-19 15:04_
+
+____
+when done, try some of your smaller files with and without -c and
+report on the timing differences
+____
+
+7 of 17 columns: 3.0 s vs 3.3 s, output 1.52 MB vs 4.37 MB.  About 19%
+faster, 2.9x smaller.
+
+____
+how do you handle the infected and deaths lists in the JSON right now
+____
+
+They are dropped.  The converter reads only `task_id` , `params_id` ,
+`seed` , and `output_dat` ; everything else is parsed and discarded
+without warning.  Both lists hold `day_final + 1` ints, one per day,
+matching the per-Day row count -- so they would map onto existing rows
+as two more columns.  Not implemented.
+
+____
+is 30 MB/s a typical read rate for JSON
+____
+
+No -- on the low side.  Only ~45% of each 64 KB block is real JSON, the
+rest NUL padding, so 30 MB/s of file is ~13 MB/s of parsed JSON.
+json-simple typically runs 30-80 MB/s; Jackson streaming 200-500 MB/s.
+
+____
+can we increase the size of the java read buffer
+____
+
+Measured rather than assumed.  `strace -c` showed 5,334 read syscalls
+totaling 0.078 s of a 4.6 s run -- *1.7% of runtime*.  `/usr/bin/time
+-v` showed 7.98 s user CPU against 3.85 s wall.  The conversion is
+CPU-bound, not I/O-bound, so a larger buffer would optimize 1.7% of the
+work.  Recommended against.
+
+____
+do the padding fix
+____
+
+Trim NUL padding before the UTF-8 decode, at all four decode sites.
+Benchmarked with 5 alternating runs of before/after jars: 3.30 s ->
+3.18 s mean, a *3.6% gain* -- less than predicted, because ASCII
+`String` decoding is already near `memcpy` speed and the char-by-char
+re-escaping loop never touched the padding anyway.  Output verified
+byte-identical.  Kept: it is five lines, strictly less work, and avoids
+~64 GB of pointless UTF-16 allocation across a full 12 GB run.
+
+The remaining lever is parallelism -- records are independent, and the
+parse is single-threaded while cores sit idle.
+
+____
+keep the padding fix and let me commit that
+____
+
+== Phase 7: Documentation
+
+_2026-09-19 15:12_
+
+____
+document our changes to log2pqt in the README.adoc
+____
+
+Expanded the existing "Parquet generation" section with usage, the three
+flags, the `columns.txt` format, duplicate-detection semantics, the
+column-selection measurements, and the CPU-bound finding.
+
+== Summary of changes
+
+[cols="2,3"]
+|===
+| File | Change
+
+| `src/main/java/LogToParquet.java`
+| `-a` append mode with Java-side glob, single-pass multi-file read,
+  duplicate `task_id` abort, header validation, `-P` progress, `-c`
+  column selection, timing/bandwidth reporting, NUL-padding trim
+
+| `src/main/java/MetadataParquetWriter.java`
+| `finalizeWrite()` so footer metadata can be added during writing,
+  used to mark an aborted file `incomplete`
+
+| `log2pqt`
+| Passes the command line straight to Java; `print` instead of `echo`
+
+| `show_pqt.py`
+| `--only-ids` for distinct `row_id` values and duplicate checking
+
+| `pom.xml`
+| Commons CLI 1.9.0
+
+| `columns.txt`
+| Example column selection file
+|===
+
+== Open items
+
+* `infected` and `deaths` remain undocumented and unconverted
+* Parallel parsing across blocks is unimplemented; it is the one change
+  likely to give a large speedup.  Note that duplicate reporting is
+  currently "first in file order", which parallel parsing would make
+  nondeterministic unless duplicates are collected and reported after
+  the join
+* `result.parquet.bad` (139 MB, footerless) and `tmp/` (~125 MB of
+  fixtures) remain in `out-1B-1-11` pending cleanup

@@ -252,6 +252,68 @@ NOTE: Our JSON is slightly malformed with literal NLs in the `output_dat` entry.
 . Preview  the Parquet with `./show_pqt`
 . Validate the Parquet with `./validate_pqt`
 
+=== `log2pqt` usage
+
+----
+$ log2pqt [-P] [-c columns.txt] <input.log> <output.parquet>
+$ log2pqt [-P] [-c columns.txt] -a <output.parquet>
+----
+
+The wrapper passes the command line straight through to the Java layer, which reports on anything it does not recognize.
+
+`-a`::
+Convert every `result*.log` in the PWD into one output file.  This is for runs that split their results across parts, such as `.../EE-outs/out-1B-1-10` , where the workflow wrote `results-000764.log` and `results-000765.log` side by side.  The files are listed with their sizes, sorted, then read in a single streaming pass with one Parquet writer held open across the whole set.  Nothing is staged or concatenated, so multi-GB parts are fine.
++
+NOTE: Parquet cannot be appended to in place, so `-a` builds the output from scratch and refuses to start if it already exists.  The `result*.log` files in the directory are therefore the complete input.  Delete the old output to rebuild.
+
+`-P`::
+Report progress as a percentage, redrawn over one line with a carriage return.  The percentage runs over the byte total of the whole file set, so it climbs 0-100 once rather than restarting at each file.
+
+`-c columns.txt`::
+Write only the data columns named in `columns.txt` .  Without it, all 17 columns of the reference format are written.  Names are whitespace-separated in any arrangement across lines, `#` begins a comment, and the output keeps the reference column order however the file lists them.  An unrecognized name is an error, since silently dropping it would yield a Parquet missing a column that was asked for.
++
+[source]
+----
+# Propagate only these column names
+
+D
+H_NI H_I
+S_PI_NH S_PI_H S_I_NH S_I_H
+----
+
+Every run reports its elapsed time and read bandwidth:
+
+----
+Read 119 MB in 3.2 s: 37.2 MB/s
+----
+
+That rate covers the whole pipeline -- read, JSON parse, explode to per-Day rows, compress, write -- so it runs well under what the filesystem alone would give.  The conversion is CPU-bound, not I/O-bound: reads account for under 2% of the runtime, and the parse is single-threaded.  Parallelizing across blocks is the remaining lever, hence the Java implementation.
+
+=== Duplicate detection
+
+Every `task_id` must be unique across the input set.  The first repeat stops the conversion and names both the log it was found in and the log it was first read from.  The rows written so far are left on disk as valid Parquet, marked in the footer with an `incomplete` key giving the reason, so a partial file cannot be mistaken for a good one.
+
+=== Column selection and file size
+
+Selecting 7 of the 17 columns on a 119 MB input:
+
+|===
+| | Time | Output size
+
+| all 17 columns | 3.3 s | 4.37 MB
+| `-c` , 7 columns | 3.0 s | 1.52 MB
+|===
+
+The time saved is float parsing and compression for the skipped columns; the read, JSON parse, and block scan are unchanged.  The file-size reduction is the bigger win.
+
+=== Inspecting the output
+
+`show_pqt` takes `--only-ids` to print the distinct `row_id` values with their row counts and check for repeats.  It reads just the `row_id` column, so it stays cheap on large files:
+
+----
+$ show_pqt result.parquet --only-ids
+----
+
 == Tools
 
 `show-log`::

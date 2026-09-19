@@ -2,6 +2,12 @@ import org.json.simple.JSONValue;
 
 import blue.strategic.parquet.Dehydrator;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+
 import org.apache.parquet.hadoop.ParquetWriter;
 
 import org.apache.parquet.schema.MessageType;
@@ -39,39 +45,183 @@ public class LogToParquet
     "NewH"
   };
 
+  // The data columns actually written, in reference order: all of
+  // DATA_COLUMNS unless -c narrowed the selection.  Set once at
+  // startup, before any schema or row is built.
+  private static String[] dataColumns = DATA_COLUMNS;
+
   public static void main(String[] args)
   throws Exception
   {
-    if (args.length < 2)
+    Options options = new Options();
+    options.addOption("a", false,
+                      "append every result*.log in PWD to one file");
+    options.addOption("P", false,
+                      "report conversion progress as a percentage");
+    options.addOption("c", true,
+                      "file naming the data columns to write");
+
+    CommandLine cmd = null;
+    try
     {
-      System.err.println("Usage: java -cp <jar> LogToParquet " +
-                         "<input.log> <output.parquet>");
-      System.exit(1);
+      cmd = new DefaultParser().parse(options, args);
+    }
+    catch (ParseException e)
+    {
+      System.err.println("Error: " + e.getMessage());
+      usage(options);
     }
 
-    String inputPath = args[0];
-    String outputPath = args[1];
+    boolean appendMode = cmd.hasOption("a");
+    boolean progress = cmd.hasOption("P");
+    String[] rest = cmd.getArgs();
 
-    long blockSize = detectBlockSize(inputPath);
-    System.out.println("Block size: " + blockSize/1024 + " KB");
+    // -a takes the output alone; otherwise input and output
+    if (rest.length != (appendMode ? 1 : 2)) usage(options);
 
-    // Predict block count from the file size: each record occupies
-    // exactly one fixed-size block.
-    long fileSize = new File(inputPath).length();
-    long blocks = (blockSize > 0) ? (fileSize / blockSize) : 0;
-    System.out.println("File size: " + fileSize/1024 + " KB");
-    System.out.println("Expected blocks: " + blocks);
+    // Narrow the schema before anything is built from it
+    if (cmd.hasOption("c"))
+      dataColumns = readColumns(cmd.getOptionValue("c"));
 
     MessageType schema = buildSchema();
     System.out.println("Schema:\n" + schema);
 
-    long[] counts = convert(inputPath, outputPath, blockSize,
-                            schema);
+    if (appendMode)
+    {
+      String outputPath = rest[0];
+      if (new File(outputPath).exists())
+      {
+        System.err.println("Error: output file already exists: " +
+                           outputPath);
+        System.exit(1);
+      }
 
-    System.out.println("Loaded " + counts[0] +
-                       " records from " + inputPath);
-    System.out.println("Wrote " + counts[1] + " rows to " +
-                       outputPath);
+      File[] logFiles = new File(".").listFiles((dir, name) ->
+        name.startsWith("result") && name.endsWith(".log"));
+
+      if (logFiles == null || logFiles.length == 0)
+      {
+        System.err.println("Error: no result*.log files found in " +
+                           new File(".").getAbsolutePath());
+        System.exit(1);
+      }
+      Arrays.sort(logFiles);
+
+      System.out.println("Input files: " + logFiles.length);
+      for (File f : logFiles)
+      {
+        System.out.println("  " + f.getName() + "  " +
+                           f.length()/1024 + " KB");
+      }
+      System.out.println();
+
+      try
+      {
+        convertAll(logFiles, outputPath, schema, progress);
+      }
+      catch (DuplicateTaskException e)
+      {
+        abortDuplicate(e, outputPath);
+      }
+    }
+    else
+    {
+      String inputPath = rest[0];
+      String outputPath = rest[1];
+
+      long blockSize = detectBlockSize(inputPath);
+      System.out.println("Block size: " + blockSize/1024 + " KB");
+
+      long fileSize = new File(inputPath).length();
+      long blocks = (blockSize > 0) ? (fileSize / blockSize) : 0;
+      System.out.println("File size: " + fileSize/1024 + " KB");
+      System.out.println("Expected blocks: " + blocks);
+
+      long startTime = System.currentTimeMillis();
+      long[] counts = convert(inputPath, outputPath, blockSize,
+                              schema);
+
+      System.out.println("Loaded " + counts[0] +
+                         " records from " + inputPath);
+      System.out.println("Wrote " + counts[1] + " rows to " +
+                         outputPath);
+      reportRate(fileSize,
+                 System.currentTimeMillis() - startTime);
+    }
+  }
+
+  /**
+     Read the column selection file: whitespace-separated names, in
+     any arrangement across lines, with '#' comments.
+
+     StreamTokenizer does that natively, so there is nothing to parse
+     by hand.  Names are reordered to match DATA_COLUMNS, keeping the
+     column order of the reference format whatever order the file
+     lists them in.  An unrecognized name is an error: silently
+     dropping it would produce a Parquet missing a column the caller
+     asked for.
+  */
+  private static String[] readColumns(String path)
+  throws IOException
+  {
+    if (!new File(path).isFile())
+    {
+      System.err.println("Error: column file not found: " + path);
+      System.exit(1);
+    }
+
+    Set<String> wanted = new LinkedHashSet<>();
+
+    try (Reader reader = new BufferedReader(new FileReader(path)))
+    {
+      StreamTokenizer tok = new StreamTokenizer(reader);
+      tok.resetSyntax();
+      tok.wordChars('!', '~');      // any printable: names, digits, _
+      tok.whitespaceChars(0, ' ');  // space, tab, newline, CR
+      tok.commentChar('#');
+
+      while (tok.nextToken() != StreamTokenizer.TT_EOF)
+      {
+        if (tok.ttype == StreamTokenizer.TT_WORD) wanted.add(tok.sval);
+      }
+    }
+
+    if (wanted.isEmpty())
+    {
+      System.err.println("Error: no column names in " + path);
+      System.exit(1);
+    }
+
+    List<String> known = Arrays.asList(DATA_COLUMNS);
+    List<String> unknown = new ArrayList<>(wanted);
+    unknown.removeAll(known);
+    if (!unknown.isEmpty())
+    {
+      System.err.println("Error: unknown column name(s) in " + path +
+                         ": " + String.join(" ", unknown));
+      System.err.println("Known columns: " + String.join(" ", known));
+      System.exit(1);
+    }
+
+    List<String> selected = new ArrayList<>(known);
+    selected.retainAll(wanted);
+    System.out.println("Columns (" + selected.size() + " of " +
+                       DATA_COLUMNS.length + "): " +
+                       String.join(" ", selected));
+    return selected.toArray(new String[0]);
+  }
+
+  /** Print the usage message and exit. */
+  private static void usage(Options options)
+  {
+    HelpFormatter formatter = new HelpFormatter();
+    formatter.printHelp("LogToParquet [-P] [-c columns.txt] " +
+                        "<input.log> <output.parquet>\n" +
+                        "       LogToParquet [-P] [-c columns.txt] " +
+                        "-a <output.parquet>",
+                        "\nConvert EMERGE result logs to Parquet.\n\n",
+                        options, "");
+    System.exit(1);
   }
 
   /**
@@ -166,7 +316,7 @@ public class LogToParquet
       int n = readBlock(in, buf);
       if (n > 0)
       {
-        first = parseBlock(new String(buf, 0, n,
+        first = parseBlock(new String(buf, 0, payloadLength(buf, n),
                                       StandardCharsets.UTF_8));
       }
 
@@ -198,7 +348,7 @@ public class LogToParquet
         while ((n = readBlock(in, buf)) > 0)
         {
           Map<String, Object> record =
-            parseBlock(new String(buf, 0, n,
+            parseBlock(new String(buf, 0, payloadLength(buf, n),
                                   StandardCharsets.UTF_8));
           if (record == null) continue;
           records++;
@@ -208,6 +358,250 @@ public class LogToParquet
     }
 
     return new long[] { records, rows };
+  }
+
+  /**
+     Append mode: write every result*.log into one Parquet file in a
+     single streaming pass, with one writer held open across the whole
+     set.  The logs are far too large to stage and concatenate, so the
+     read loop simply moves on to the next file when one runs out.
+
+     The caller has already established that the output file does not
+     exist, so the logs on disk are the complete input.  Every task_id
+     must therefore be unique across the set; the first repeat stops
+     the conversion.
+  */
+  private static void
+  convertAll(File[] logFiles, String outputPath, MessageType schema,
+             boolean showProgress)
+  throws IOException
+  {
+    List<String> names = columnNames();
+    Dehydrator<Object[]> dehydrator = (row, valueWriter) ->
+    {
+      for (int i = 0; i < names.size(); i++)
+      {
+        valueWriter.write(names.get(i), row[i]);
+      }
+    };
+
+    // The run's header block is written once, at the top of the first
+    // log; the later parts carry results only.  Parquet key/value
+    // metadata has to be handed over when the writer opens, so that
+    // block is read up front.
+    Map<String, String> metadata = readMetadata(logFiles[0]);
+    if (metadata.isEmpty()) abortNoHeader(logFiles[0]);
+    printMetadata(metadata);
+
+    // task_id -> the log it was first seen in, for the error message
+    Map<Long, String> seen = new HashMap<>();
+    long records = 0;
+    long rows = 0;
+
+    // Progress runs over the byte total of the whole set, so it does
+    // not restart at each file.
+    long totalBytes = 0;
+    for (File f : logFiles) totalBytes += f.length();
+    long bytesDone = 0;
+    int lastPercent = -1;
+    long startTime = System.currentTimeMillis();
+
+    try (ParquetWriter<Object[]> writer =
+         MetadataParquetWriter.open(schema, new File(outputPath),
+                                    dehydrator, metadata))
+    {
+      for (File logFile : logFiles)
+      {
+        long blockSize = detectBlockSize(logFile.getPath());
+        if (blockSize <= 0 || blockSize > Integer.MAX_VALUE)
+        {
+          System.err.println("ERROR: bad block size " + blockSize +
+                             " in " + logFile.getName() +
+                             ": skipping file");
+          continue;
+        }
+
+        long fileRecords = 0;
+        long fileRows = 0;
+        byte[] buf = new byte[(int) blockSize];
+
+        try (InputStream in = new BufferedInputStream(
+               new FileInputStream(logFile)))
+        {
+          int n;
+          while ((n = readBlock(in, buf)) > 0)
+          {
+            bytesDone += n;
+            if (showProgress)
+              lastPercent = reportProgress(bytesDone, totalBytes,
+                                           lastPercent);
+
+            Map<String, Object> record =
+              parseBlock(new String(buf, 0, payloadLength(buf, n),
+                                    StandardCharsets.UTF_8));
+            if (record == null || isHeader(record)) continue;
+
+            long taskId = asLong(record.get("task_id"));
+            String origin = seen.put(taskId, logFile.getName());
+            if (origin != null)
+              throw foundDuplicate(taskId, logFile.getName(),
+                                   origin, metadata);
+
+            fileRecords++;
+            fileRows += writeRecord(writer, record);
+          }
+        }
+
+        if (showProgress) clearProgress();
+        System.out.println(logFile.getName() + ": " + fileRecords +
+                           " records, " + fileRows + " rows");
+        records += fileRecords;
+        rows += fileRows;
+      }
+    }
+
+    System.out.println();
+    System.out.println("Loaded " + records + " records from " +
+                       logFiles.length + " files");
+    System.out.println("Wrote " + rows + " rows to " + outputPath);
+    reportRate(bytesDone, System.currentTimeMillis() - startTime);
+  }
+
+  /**
+     Report how long the conversion took and how fast the logs were
+     consumed.  The rate covers the whole pipeline -- read, parse,
+     explode, compress, write -- so it runs well under what the
+     filesystem alone would give.
+  */
+  private static void reportRate(long bytes, long elapsedMillis)
+  {
+    double seconds = elapsedMillis / 1e3;
+    System.out.printf("Read %.0f MB in %.1f s: %.1f MB/s\n",
+                      bytes / 1e6, seconds,
+                      (seconds > 0) ? (bytes / 1e6 / seconds) : 0.0);
+  }
+
+  /**
+     A task_id may only be written once.  Seeing it again means the
+     input set is wrong -- the same results are staged twice -- so
+     stop rather than write a file that silently disagrees with the
+     logs.
+
+     The rows written so far are left on disk, marked incomplete in
+     the footer: throwing unwinds through the writer's close(), so the
+     file is still valid Parquet and the marker travels with it.  The
+     caller must delete it before re-running.
+  */
+  private static DuplicateTaskException
+  foundDuplicate(long taskId, String logFile, String origin,
+                   Map<String, String> metadata)
+  {
+    String message = "duplicate task_id " + taskId + ": found in " +
+                     logFile + ", already read from " + origin;
+    metadata.put("incomplete", message);
+    return new DuplicateTaskException(message);
+  }
+
+  /** Raised on the first repeated task_id; stops the conversion. */
+  private static final class DuplicateTaskException
+  extends RuntimeException
+  {
+    DuplicateTaskException(String message) { super(message); }
+  }
+
+  /**
+     Report a duplicate task_id and exit.  The partial output stays on
+     disk so it can be inspected, but it is not a usable result.
+  */
+  private static void
+  abortDuplicate(DuplicateTaskException e, String outputPath)
+  {
+    System.err.println();
+    System.err.println("ERROR: " + e.getMessage());
+    System.err.println("Partial output: " + outputPath);
+    System.exit(1);
+  }
+
+  /**
+     Redraw the progress line, but only when the whole-number percent
+     has advanced: a block is small next to the total, so refreshing
+     on every one would write thousands of identical lines.  Returns
+     the percent now displayed, to be passed back on the next call.
+  */
+  private static int
+  reportProgress(long done, long total, int lastPercent)
+  {
+    if (total <= 0) return lastPercent;
+
+    int percent = (int) (100 * done / total);
+    if (percent == lastPercent) return lastPercent;
+
+    // No newline: the carriage return parks the cursor at the start
+    // of the line so the next write covers this one.
+    System.out.print("\rProgress: " + percent + "%");
+    System.out.flush();
+    return percent;
+  }
+
+  /**
+     Retire the progress line so ordinary output does not land on top
+     of it.  The spaces wipe the text the carriage return left behind.
+  */
+  private static void clearProgress()
+  {
+    System.out.print("\r                    \r");
+    System.out.flush();
+  }
+
+  /**
+     Report a first log that carries no header block and exit.  The
+     run writes its header once, at the top of the first part, so the
+     part holding it is missing from this directory.
+  */
+  private static void abortNoHeader(File logFile)
+  {
+    System.err.println();
+    System.err.println("ERROR: no header block in " +
+                       logFile.getName() + ", which sorts first " +
+                       "and so should begin the run");
+    System.err.println("The result*.log set here is incomplete: " +
+                       "the part holding the header is missing");
+    System.exit(1);
+  }
+
+  /**
+     Read the header block of a log, if it has one, as the key/value
+     metadata for the Parquet footer.
+  */
+  private static Map<String, String> readMetadata(File logFile)
+  throws IOException
+  {
+    Map<String, String> metadata = new LinkedHashMap<>();
+
+    long blockSize = detectBlockSize(logFile.getPath());
+    if (blockSize <= 0 || blockSize > Integer.MAX_VALUE)
+      return metadata;
+
+    byte[] buf = new byte[(int) blockSize];
+    Map<String, Object> first;
+    try (InputStream in = new BufferedInputStream(
+           new FileInputStream(logFile)))
+    {
+      int n = readBlock(in, buf);
+      if (n <= 0) return metadata;
+      first = parseBlock(new String(buf, 0, payloadLength(buf, n),
+                                    StandardCharsets.UTF_8));
+    }
+
+    if (!isHeader(first)) return metadata;
+
+    for (Map.Entry<String, Object> entry : first.entrySet())
+    {
+      // "header" only marks the block; it is not real metadata
+      if (entry.getKey().equals("header")) continue;
+      metadata.put(entry.getKey(), String.valueOf(entry.getValue()));
+    }
+    return metadata;
   }
 
   /**
@@ -236,6 +630,19 @@ public class LogToParquet
       writer.write(row);
     }
     return rows.size();
+  }
+
+  /**
+     Length of the record within a block, ignoring the NUL bytes that
+     pad it out to the block boundary.  Roughly half of a block is
+     padding, and decoding it to UTF-16 only to skip it later is the
+     single largest avoidable cost in the read loop.
+  */
+  private static int payloadLength(byte[] buf, int n)
+  {
+    int end = n;
+    while (end > 0 && buf[end - 1] == 0) end--;
+    return end;
   }
 
   /**
@@ -375,14 +782,14 @@ public class LogToParquet
       // skip malformed rows
       if (tok.length < header.length) continue;
 
-      Object[] row = new Object[4 + DATA_COLUMNS.length];
+      Object[] row = new Object[4 + dataColumns.length];
       row[0] = rowId;
       row[1] = paramsId;
       row[2] = seed;
       row[3] = Integer.parseInt(tok[dayIdx]);
-      for (int c = 0; c < DATA_COLUMNS.length; c++)
+      for (int c = 0; c < dataColumns.length; c++)
       {
-        Integer idx = colIndex.get(DATA_COLUMNS[c]);
+        Integer idx = colIndex.get(dataColumns[c]);
         row[4 + c] =
           (idx != null) ? Float.parseFloat(tok[idx]) : 0.0f;
       }
@@ -397,7 +804,7 @@ public class LogToParquet
     names.add("params_id");
     names.add("seed");
     names.add("Day");
-    names.addAll(Arrays.asList(DATA_COLUMNS));
+    names.addAll(Arrays.asList(dataColumns));
     return names;
   }
 
@@ -408,7 +815,7 @@ public class LogToParquet
     b.required(PrimitiveTypeName.INT64).named("params_id");
     b.required(PrimitiveTypeName.INT64).named("seed");
     b.required(PrimitiveTypeName.INT32).named("Day");
-    for (String col : DATA_COLUMNS)
+    for (String col : dataColumns)
     {
       b.required(PrimitiveTypeName.FLOAT).named(col);
     }
