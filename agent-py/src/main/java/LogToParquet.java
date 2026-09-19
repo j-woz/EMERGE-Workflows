@@ -36,7 +36,7 @@ import java.util.*;
 */
 public class LogToParquet
 {
-  // The 17 data columns selected from output_dat, in reference
+  // The default 17 data columns selected from output_dat, in reference
   // order.  Names here are the RENAMED (/ -> _) forms that appear
   // in the parquet.
   private static final String[] DATA_COLUMNS = {
@@ -50,6 +50,16 @@ public class LogToParquet
   // startup, before any schema or row is built.
   private static String[] dataColumns = DATA_COLUMNS;
 
+  // Set true and rebuild to split the run time between our own
+  // parsing and the Parquet API.  Being a compile-time constant, the
+  // guarded blocks are dropped by javac when this is false, so the
+  // read loop pays nothing for the instrumentation.
+  private static final boolean profilingEnabled = false;
+
+  // Nanoseconds in our JSON/table parsing, and in Parquet API calls
+  private static long parseTime = 0;
+  private static long parquetTime = 0;
+
   public static void main(String[] args)
   throws Exception
   {
@@ -60,6 +70,8 @@ public class LogToParquet
                       "report conversion progress as a percentage");
     options.addOption("c", true,
                       "file naming the data columns to write");
+    options.addOption("h", false,
+                      "show this help message");
 
     CommandLine cmd = null;
     try
@@ -69,15 +81,19 @@ public class LogToParquet
     catch (ParseException e)
     {
       System.err.println("Error: " + e.getMessage());
-      usage(options);
+      usage(options, 1);
     }
+
+    // Asking for help is not an error, so it goes to stdout and
+    // exits 0, letting "log2pqt -h | less" work
+    if (cmd.hasOption("h")) usage(options, 0);
 
     boolean appendMode = cmd.hasOption("a");
     boolean progress = cmd.hasOption("P");
     String[] rest = cmd.getArgs();
 
     // -a takes the output alone; otherwise input and output
-    if (rest.length != (appendMode ? 1 : 2)) usage(options);
+    if (rest.length != (appendMode ? 1 : 2)) usage(options, 1);
 
     // Narrow the schema before anything is built from it
     if (cmd.hasOption("c"))
@@ -147,6 +163,7 @@ public class LogToParquet
                          outputPath);
       reportRate(fileSize,
                  System.currentTimeMillis() - startTime);
+      reportProfile();
     }
   }
 
@@ -211,17 +228,73 @@ public class LogToParquet
     return selected.toArray(new String[0]);
   }
 
-  /** Print the usage message and exit. */
-  private static void usage(Options options)
+  /**
+     Lay out column names in indented lines, wrapping before the help
+     formatter can break the list at an arbitrary point.
+  */
+  private static String
+  columnList(String[] names, String indent, int width)
   {
+    StringBuilder out = new StringBuilder();
+    StringBuilder line = new StringBuilder(indent);
+
+    for (String name : names)
+    {
+      if (line.length() > indent.length() &&
+          line.length() + 1 + name.length() > width)
+      {
+        out.append(line).append('\n');
+        line = new StringBuilder(indent);
+      }
+      if (line.length() > indent.length()) line.append(' ');
+      line.append(name);
+    }
+    out.append(line).append('\n');
+
+    return out.toString();
+  }
+
+  /**
+     Print the usage message and exit with the given status: 0 when
+     help was asked for, 1 when the command line was wrong.
+  */
+  private static void usage(Options options, int status)
+  {
+    String header =
+      "\nConvert EMERGE result logs to Parquet.\n\n";
+
+    String footer =
+      "\nWithout -a, one log is converted to one Parquet file.\n" +
+      "With -a, every result*.log in the current directory is read\n" +
+      "in one pass into a single Parquet file.  That file must not\n" +
+      "already exist: Parquet cannot be appended to in place, so the\n" +
+      "logs present are taken to be the whole input.\n" +
+      "\n" +
+      "Every task_id must be unique across the input.  The first\n" +
+      "repeat stops the run; the partial output is left marked\n" +
+      "incomplete in its footer.\n" +
+      "\n" +
+      "The columns file for -c holds whitespace-separated column\n" +
+      "names, with # starting a comment.  Without it, all " +
+      DATA_COLUMNS.length + " data\n" +
+      "columns are written.  Known columns:\n" +
+      columnList(DATA_COLUMNS, "  ", 66) +
+      "\n" +
+      "Every run reports its elapsed time and read bandwidth.\n";
+
     HelpFormatter formatter = new HelpFormatter();
-    formatter.printHelp("LogToParquet [-P] [-c columns.txt] " +
+    PrintWriter out =
+      new PrintWriter(status == 0 ? System.out : System.err, true);
+
+    formatter.printHelp(out, formatter.getWidth(),
+                        "log2pqt [-P] [-c columns.txt] " +
                         "<input.log> <output.parquet>\n" +
-                        "       LogToParquet [-P] [-c columns.txt] " +
+                        "       log2pqt [-P] [-c columns.txt] " +
                         "-a <output.parquet>",
-                        "\nConvert EMERGE result logs to Parquet.\n\n",
-                        options, "");
-    System.exit(1);
+                        header, options, formatter.getLeftPadding(),
+                        formatter.getDescPadding(), footer, false);
+
+    System.exit(status);
   }
 
   /**
@@ -354,6 +427,8 @@ public class LogToParquet
           records++;
           rows += writeRecord(writer, record);
         }
+
+        if (profilingEnabled) closeTimed(writer);
       }
     }
 
@@ -458,6 +533,10 @@ public class LogToParquet
         records += fileRecords;
         rows += fileRows;
       }
+
+      // The writer's close() flushes the last row group and writes
+      // the footer, so time it with the rest of the Parquet work.
+      if (profilingEnabled) closeTimed(writer);
     }
 
     System.out.println();
@@ -465,6 +544,35 @@ public class LogToParquet
                        logFiles.length + " files");
     System.out.println("Wrote " + rows + " rows to " + outputPath);
     reportRate(bytesDone, System.currentTimeMillis() - startTime);
+    reportProfile();
+  }
+
+  /**
+     Close the writer inside the Parquet timer.  close() flushes the
+     final row group and writes the footer, which is real Parquet work
+     and would otherwise land outside both accumulators.  The
+     try-with-resources close that follows is a no-op: ParquetWriter
+     tracks whether it has already closed.
+  */
+  private static void closeTimed(ParquetWriter<Object[]> writer)
+  throws IOException
+  {
+    long start = System.nanoTime();
+    writer.close();
+    parquetTime += System.nanoTime() - start;
+  }
+
+  /**
+     Report where the run spent its time.  Parsing and Parquet will
+     not add up to the wall clock: reading, the block scan, and the
+     UTF-8 decode sit outside both.
+  */
+  private static void reportProfile()
+  {
+    if (!profilingEnabled) return;
+
+    System.out.printf("Profile: parse %.1f s, parquet %.1f s\n",
+                      parseTime / 1e9, parquetTime / 1e9);
   }
 
   /**
@@ -623,12 +731,25 @@ public class LogToParquet
               Map<String, Object> record)
   throws IOException
   {
+    long start = profilingEnabled ? System.nanoTime() : 0;
+
     List<Object[]> rows = new ArrayList<>();
     explode(record, rows);
+
+    if (profilingEnabled)
+    {
+      long now = System.nanoTime();
+      parseTime += now - start;
+      start = now;
+    }
+
     for (Object[] row : rows)
     {
       writer.write(row);
     }
+
+    if (profilingEnabled) parquetTime += System.nanoTime() - start;
+
     return rows.size();
   }
 
@@ -669,6 +790,16 @@ public class LogToParquet
      no object is found.
   */
   private static Map<String, Object> parseBlock(String block)
+  {
+    if (!profilingEnabled) return parseBlockInner(block);
+
+    long start = System.nanoTime();
+    Map<String, Object> record = parseBlockInner(block);
+    parseTime += System.nanoTime() - start;
+    return record;
+  }
+
+  private static Map<String, Object> parseBlockInner(String block)
   {
     StringBuilder obj = new StringBuilder();
     boolean inString = false;

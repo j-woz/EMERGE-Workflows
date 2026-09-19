@@ -257,9 +257,13 @@ NOTE: Our JSON is slightly malformed with literal NLs in the `output_dat` entry.
 ----
 $ log2pqt [-P] [-c columns.txt] <input.log> <output.parquet>
 $ log2pqt [-P] [-c columns.txt] -a <output.parquet>
+$ log2pqt -h
 ----
 
 The wrapper passes the command line straight through to the Java layer, which reports on anything it does not recognize.
+
+`-h`::
+Print the help message and exit.  Help goes to stdout and exits 0, so `log2pqt -h | less` works, while a bad command line goes to stderr and exits 1.
 
 `-a`::
 Convert every `result*.log` in the PWD into one output file.  This is for runs that split their results across parts, such as `.../EE-outs/out-1B-1-10` , where the workflow wrote `results-000764.log` and `results-000765.log` side by side.  The files are listed with their sizes, sorted, then read in a single streaming pass with one Parquet writer held open across the whole set.  Nothing is staged or concatenated, so multi-GB parts are fine.

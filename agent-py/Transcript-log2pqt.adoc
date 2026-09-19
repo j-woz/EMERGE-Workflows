@@ -32,7 +32,10 @@ Timeline anchors actually on disk:
 | 2026-09-17 16:40 | `columns.txt`
 | 2026-09-17 16:49 | `log2pqt` -- final wrapper
 | 2026-09-19 15:04 | `LogToParquet.java` -- padding fix
-| 2026-09-19 15:12 | `README.adoc` -- documentation
+| 2026-09-19 15:12 | `README.adoc` -- `log2pqt` documentation
+| 2026-09-19 15:29 | profiling runs at 119 MB and 1191 MB
+| 2026-09-19 15:37 | `LogToParquet.java` , `log2pqt` -- `-h` help
+| 2026-09-19 15:39 | `README.adoc` -- `-h` documented
 |===
 
 == Phase 1: Append mode
@@ -387,6 +390,111 @@ Expanded the existing "Parquet generation" section with usage, the three
 flags, the `columns.txt` format, duplicate-detection semantics, the
 column-selection measurements, and the CPU-bound finding.
 
+____
+create a document called Transcript-log2pqt.adoc in asciidoc format.
+create a nicely formatted and timestamped transcript of the important
+prompts in this session as far back as you have history about the shell
+and java layers for this tool
+____
+
+This document.  Per-message timestamps were not recorded, so phases are
+anchored to file mtimes and that limitation is stated rather than
+papered over with invented times.
+
+== Phase 8: Profiling
+
+_2026-09-19 15:29_
+
+____
+create a timing feature .  it is controlled by a hard-coded Java global
+boolean variable called `profilingEnabled`.  this is so it is compiled
+out if disabled. if true, it captures the nano time for our java parsing
+code in an accumulator called `parseTime` and the time spent in the
+parquet api called `parquetTime`.  if enabled, report these two times at
+the end of the run
+____
+
+`profilingEnabled` is a `private static final boolean`, so javac treats
+it as a compile-time constant and drops the guarded blocks entirely when
+it is false.  Verified in the bytecode rather than assumed:
+`writeRecord` holds no `nanoTime` reference, the `closeTimed` call sites
+vanish, and `reportProfile` compiles to a bare `return`.
+
+`parseBlock` was split into a timing wrapper and `parseBlockInner` so
+all four call sites are covered by one change.  The writer's `close()`
+is timed explicitly, since it flushes the last row group and writes the
+footer -- real Parquet work that would otherwise fall outside both
+accumulators.  The second close from try-with-resources is a no-op;
+`InternalParquetRecordWriter` short-circuits on a `closed` flag, checked
+in the bytecode.
+
+At 119 MB: parse 2.1 s, parquet 0.9 s of a 3.2 s run.
+
+____
+profile a run that is 10x bigger
+____
+
+At 1191 MB, two runs:
+
+[cols="3,1,1"]
+|===
+| | Run 1 | Run 2
+
+| Wall | 23.1 s | 23.6 s
+| Parse | 17.0 s | 17.9 s
+| Parquet | 5.3 s | 4.9 s
+| Rate | 51.6 MB/s | 50.4 MB/s
+|===
+
+Parse is ~74% of the run and Parquet ~22%, leaving ~4% for read, block
+scan, and decode.  The parse-to-Parquet ratio widens from 2.3x at 119 MB
+to 3.4x here, so parsing dominates *more* as input grows.
+
+Two findings beyond the split:
+
+* Throughput rose from 37 to 51 MB/s with scale -- JIT amortization, as
+  warmup becomes a smaller fraction of a longer run.  The 6 GB
+  production runs should sustain something near the higher rate.
+* CPU fell from 230% to 145%, with 32 s user against 23 s wall.  Real
+  parallelism exists (Parquet compression threads), but the
+  single-threaded parse increasingly gates the run.  Peak RSS was
+  1.96 GB, driven by Parquet row-group buffering rather than the
+  streaming read -- relevant if the parse is ever parallelized, since
+  each in-flight batch would add to it.
+
+== Phase 9: Help message
+
+_2026-09-19_
+
+____
+add a help message via `log2pqt -h`
+____
+
+____
+do the arguments to addOption get added to the help output?
+____
+
+Yes -- the third `addOption` argument is the description, rendered by
+`HelpFormatter` in the options block, sorted alphabetically rather than
+in insertion order.
+
+Help writes to stdout and exits 0, so `log2pqt -h | less` works, while a
+bad command line writes to stderr and exits 1.  A footer documents the
+`-a` rebuild-not-append semantics, duplicate handling, and the columns
+file format.  The 17-column list is pre-wrapped, since `HelpFormatter`
+would otherwise break it mid-list at its own wrap width.
+
+____
+just drop that OK
+____
+
+The wrapper's trailing `print "OK"` followed even a help request, which
+had converted nothing.  Removed; conversions now end on the stats line.
+
+____
+document -h in the README.adoc and Transcript
+____
+
 == Summary of changes
 
 [cols="2,3"]
@@ -396,14 +504,16 @@ column-selection measurements, and the CPU-bound finding.
 | `src/main/java/LogToParquet.java`
 | `-a` append mode with Java-side glob, single-pass multi-file read,
   duplicate `task_id` abort, header validation, `-P` progress, `-c`
-  column selection, timing/bandwidth reporting, NUL-padding trim
+  column selection, `-h` help, timing/bandwidth reporting,
+  NUL-padding trim, compiled-out `profilingEnabled` instrumentation
 
 | `src/main/java/MetadataParquetWriter.java`
 | `finalizeWrite()` so footer metadata can be added during writing,
   used to mark an aborted file `incomplete`
 
 | `log2pqt`
-| Passes the command line straight to Java; `print` instead of `echo`
+| Passes the command line straight to Java; `print` instead of `echo`;
+  no trailing `OK`
 
 | `show_pqt.py`
 | `--only-ids` for distinct `row_id` values and duplicate checking
@@ -423,5 +533,7 @@ column-selection measurements, and the CPU-bound finding.
   currently "first in file order", which parallel parsing would make
   nondeterministic unless duplicates are collected and reported after
   the join
-* `result.parquet.bad` (139 MB, footerless) and `tmp/` (~125 MB of
-  fixtures) remain in `out-1B-1-11` pending cleanup
+* Leftovers in `out-1B-1-11` pending cleanup: `result.parquet.bad`
+  (139 MB, footerless, predates this work), `result.parquet.bak`
+  (392 MB, the good full-scale output), a 0-byte `result.parquet` , and
+  `tmp/` (122 MB of scaled fixtures)
