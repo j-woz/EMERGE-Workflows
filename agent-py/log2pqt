@@ -19,8 +19,6 @@ fi
 # The command line belongs to the Java layer, which reports on it
 java -cp "$JAR_FILE" LogToParquet "$@"
 
-print "OK"
-
 # Local Variables:
 # sh-basic-offset: 2
 # mode: sh
