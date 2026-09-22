@@ -3,14 +3,16 @@
 # This code runs on each leader rank,
 #      i.e., once per node.
 
-# Set a root data directory
-set root $env(HOME)/data
 # puts "HOOK HOST: [exec hostname]"
 
 # Get the leader communicator from ADLB
 set comm [ adlb::comm_get leaders ]
 # Get my rank among the leaders
 set rank [ adlb::comm_rank $comm ]
+
+puts "hook rank: $rank"
+flush stdout
+after 2000
 
 # If I am rank=0, construct the list of files to copy
 set EMERGE_WF  $env(HOME)/proj/EMERGE-WF
@@ -46,4 +48,7 @@ foreach f $files {
   }
 }
 
-# puts "HOOK DONE: [exec hostname]"
+if { $rank == 0 } {
+  puts "HOOK DONE: [exec hostname]"
+}
+after 1000

@@ -1,7 +1,7 @@
 #!/bin/zsh -f
 set -eu
 
-# LOOP REPLICATES AURORA TEST 3 SH
+# LOOP REPLICATES AURORA TEST MS SH
 # A particular run with data and parameters
 # Includes seed_init and multi-stream capabilities
 
@@ -11,7 +11,8 @@ source $THIS/../common/tools.zsh
 
 # N:         Number of replicates
 # SEED_INIT:
-args N SEED_INIT - ${*}
+args N SEED_INIT STREAMS - ${*}
+export OPTZ_IO
 
 # Hard-code OPTZ_IO and PARAMS for this campaign:
 export OPTZ_IO=IO
@@ -35,7 +36,8 @@ A=(
   ~/E/wozniak/EE-outs/out-1B-$JOBNAME
   $N
   $SEED_INIT
+  $STREAMS
 )
 
 set -x
-$THIS/loop-replicates-aurora.sh $A
+$THIS/loop-replicates-aurora-ms.sh $A
