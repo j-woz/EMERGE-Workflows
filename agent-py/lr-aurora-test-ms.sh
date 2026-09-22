@@ -1,9 +1,9 @@
 #!/bin/zsh -f
 set -eu
 
-# LOOP REPLICATES AURORA TEST 2 SH
-# A particular run with data and parameters fixed
-#   and multi-stream
+# LOOP REPLICATES AURORA TEST MS SH
+# A particular run with data and parameters
+# Includes seed_init and multi-stream capabilities
 
 THIS=${0:h:A}
 
@@ -40,4 +40,4 @@ A=(
 )
 
 set -x
-$THIS/loop-replicates-aurora.sh $A
+$THIS/loop-replicates-aurora-ms.sh $A
