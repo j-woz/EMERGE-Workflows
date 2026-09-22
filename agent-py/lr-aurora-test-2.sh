@@ -3,6 +3,7 @@ set -eu
 
 # LOOP REPLICATES AURORA TEST 2 SH
 # A particular run with data and parameters
+# for the Saltelli 1B campaign
 
 THIS=${0:h:A}
 
