@@ -3,7 +3,7 @@
 
 = Agent Workflow via Python Invocation (agent-py)
 
-The idea here is to support running 1M or more ExaEpi runs in a single workflow.
+The idea here is to support running 1M-1B ExaEpi runs in a single workflow.
 
 This directory contains a workflow and Python features for running the ExaEpi `agent`.
 
