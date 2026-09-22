@@ -1,0 +1,184 @@
+
+:toc:
+:toclevels: 2
+
+= Transcript: run-inspection tools
+
+Development transcript for the smaller tools in this directory --
+`report` , `log-size` , and friends.  The `log2pqt` converter has its
+own record in `Transcript-log2pqt.adoc` .
+
+== About this record
+
+The prompts below are reproduced verbatim.  Responses are summarized,
+not quoted.
+
+NOTE: Per-message timestamps were not recorded during the session, so
+the dates given are derived from file mtimes and mark when work landed
+on disk rather than when each prompt was typed.  Prompt order within a
+section is exact.
+
+== `report` : multi-log run directories
+
+_2026-09-20_
+
+____
+extend ./report to work on directories with multiple logs like
+out-1B-1-40
+____
+
+=== The pre-existing breakage
+
+`report` turned out to be broken for *every* directory, not only
+multi-log ones.  Commit 18813f0 ("Provide filename now") changed
+`log-size` to take a filename instead of a directory:
+
+[source,diff]
+----
+-args BLOCK_KB DIR - ${*}
++args BLOCK_KB LOG - ${*}
+
+-LOG=$DIR/results.log
+----
+
+but `report` still passed `$DIR` , so every invocation died:
+
+----
+JOB:    8830792
+NODES:              512
+2026-09-20 18:47:07 No LOG=/home/wozniak/E/wozniak/EE-outs/out-1B-1-40
+----
+
+=== The change
+
+`report` globs `results*.log` and passes the list.  `log-size` accepts a
+variable-length list and sums the block counts.  Since `ARGS()` enforces
+an exact argument count, `BLOCK_KB` is parsed with it and the remaining
+arguments shifted off by hand:
+
+[source,zsh]
+----
+args BLOCK_KB - ${1-}
+shift
+LOGS=( ${*} )
+----
+
+Both naming conventions had to keep working.  At the time of the change,
+under `EE-outs` :
+
+* 147 directories held a single `results.log`
+* 8 held `results-NNNNNN.log` parts, one per output stream
+
+=== The truncated log
+
+`out-1B-1-40` exposed a second problem.  Its second log ends 24,576
+bytes into a 64 KB block, and that tail is an unterminated JSON record
+-- the job hit its 4-hour walltime mid-write:
+
+----
+results-006139.log: 302509981696 bytes, 4615936.0000 blocks, remainder 0
+results-006140.log: 302498209792 bytes, 4615756.3750 blocks, remainder 24576
+----
+
+The first attempt treated this as informational and carried on, on the
+grounds that a reporting tool should report rather than fail.  That was
+wrong:
+
+____
+no- a partial block is an error.  you can report the number of blocks
+found so far but then abort.  btw print the block count for each log
+you encounter, but stop when you find a bad block
+____
+
+The second attempt aborted at the bad log, which lost the total:
+
+____
+don't abort there, break out of the loop, report the TOTAL, then abort
+____
+
+So a bad block records the reason, breaks the loop, prints the total,
+and aborts after:
+
+----
+  results-006139.log       4615936
+  results-006140.log       4615756
+BLOCKS: 9231692
+2026-09-20 18:53:50 Funny size: 302498209792 in results-006140.log
+----
+
+Logs after the bad one are deliberately left uncounted -- they come from
+the same dead run, and their counts would only mislead.
+
+=== Cleanups
+
+____
+yes, only print the per-log line when there are multiple logs.  also,
+use NULL_GLOB, not (N)
+____
+
+With a single log the per-log line merely repeated the total, so it is
+now printed only when there are several.  The glob qualifier `(N)` was
+replaced with `setopt NULL_GLOB` , which the user then hoisted to the
+top of the script rather than scoping it around the single glob.
+
+=== Verification
+
+[cols="2,3"]
+|===
+| Case | Result
+
+| Single log (`out-1B-1-00`)
+| `BLOCKS: 9437185` , no redundant per-log line, elapsed time found
+
+| Multi-log clean (`out-1B-1-11`)
+| Two logs listed, `BLOCKS: 181760`
+
+| Multi-log truncated (`out-1B-1-40`)
+| Counts and total printed, then abort
+
+| No log, with `-n`
+| "No results.log", `NULL_GLOB` yields an empty list
+|===
+
+The 181,760 blocks for `out-1B-1-11` cross-check against the `log2pqt`
+run on the same directory, which loaded 181,759 records -- the
+difference being the header block.
+
+____
+document report changes in the README and Transcript
+____
+
+Added a `report` and a `log-size` entry to the README's Tools section;
+neither had been documented before.
+
+____
+my bad- create a new similar transcript Transcript-Tools for other tools
+(not log2pqt), and document report there
+____
+
+This document.  The `report` material was moved here out of
+`Transcript-log2pqt.adoc` .
+
+== Summary of changes
+
+[cols="2,3"]
+|===
+| File | Change
+
+| `report`
+| Globs `results*.log` and passes the list to `log-size` , fixing both
+  multi-log directories and the pre-existing directory/filename
+  mismatch; `NULL_GLOB` for the no-log case
+
+| `log-size`
+| Accepts a variable-length log list and sums the blocks; per-log
+  counts when there are several; a partial block reports the total,
+  then aborts
+|===
+
+== Open items
+
+* `out-1B-1-40` is a killed run: its second log is truncated mid-record
+  and cannot be fully converted
+* `report~` in this directory is an Emacs backup that still contains
+  unresolved merge-conflict markers from an earlier stash
