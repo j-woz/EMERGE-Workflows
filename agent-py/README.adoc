@@ -327,6 +327,42 @@ Show the log:
 $ show-log results.log | less
 ----
 
+`report`::
+Summarize a run directory: job ID, node count, result block count, and elapsed time.
++
+----
+$ report [-n] <rundir>
+----
++
+A run writes either a single `results.log` or, with multiple output streams, several `results-NNNNNN.log` .  Both are handled: `report` globs `results*.log` and hands the list to `log-size` , which counts the blocks in each and sums them.  With more than one log, the per-log counts are listed before the total.
++
+----
+$ report .../EE-outs/out-1B-1-11
+JOB:    8828920
+NODES:              64
+  results-000764.log       90880
+  results-000765.log       90880
+BLOCKS: 181760
+----
++
+`-n` tolerates a directory with no log yet, and additionally counts the runs that reached AMReX finalization.
+
+`log-size`::
+Count the 64 KB blocks in one or more result logs:
++
+----
+$ log-size [-n] <block_kb> <log> [log ...]
+----
++
+A log whose size is not a whole number of blocks means the run was killed mid-record.  The block counts found so far are printed, along with the total, and then the tool aborts -- later logs are not counted, since they come from the same dead run.  For example, `out-1B-1-40` was killed at its 4-hour walltime:
++
+----
+  results-006139.log       4615936
+  results-006140.log       4615756
+BLOCKS: 9231692
+Funny size: 302498209792 in results-006140.log
+----
+
 == Ablation study
 
 Plan:

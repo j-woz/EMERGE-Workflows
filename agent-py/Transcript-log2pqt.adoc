@@ -36,6 +36,7 @@ Timeline anchors actually on disk:
 | 2026-09-19 15:29 | profiling runs at 119 MB and 1191 MB
 | 2026-09-19 15:37 | `LogToParquet.java` , `log2pqt` -- `-h` help
 | 2026-09-19 15:39 | `README.adoc` -- `-h` documented
+| 2026-09-22 11:13 | `LogToParquet.java` -- empty-input check
 |===
 
 == Phase 1: Append mode
@@ -495,6 +496,38 @@ ____
 document -h in the README.adoc and Transcript
 ____
 
+`-h` added to the README usage block and flag list, and Phase 9 above
+added here.
+
+NOTE: Work on the other tools in this directory -- `report` and
+`log-size` -- is recorded separately in `Transcript-Tools.adoc` .
+
+== Phase 10: Empty input check
+
+_2026-09-22_
+
+____
+in log2pqt, add a startup time check at the java level for a 0-byte
+input log.  This is a fatal error
+____
+
+`checkNotEmpty` runs before any conversion starts: in append mode over
+every `result*.log` once the file listing has printed, and in
+single-file mode before block-size detection.
+
+----
+Error: empty log file: ./results-000.log
+----
+
+The check matters because of how the code would otherwise behave.
+`detectBlockSize` returns 0 for an empty file, the read loop hits EOF
+immediately, and the run produces a valid but empty Parquet -- a silent
+success indistinguishable from a real result.  Now it exits 1 and writes
+nothing.
+
+Tested: an empty log alone, one empty among several valid, single-file
+mode with an empty input, and a clean run to confirm no regression.
+
 == Summary of changes
 
 [cols="2,3"]
@@ -503,9 +536,10 @@ ____
 
 | `src/main/java/LogToParquet.java`
 | `-a` append mode with Java-side glob, single-pass multi-file read,
-  duplicate `task_id` abort, header validation, `-P` progress, `-c`
-  column selection, `-h` help, timing/bandwidth reporting,
-  NUL-padding trim, compiled-out `profilingEnabled` instrumentation
+  duplicate `task_id` abort, header validation, empty-input check,
+  `-P` progress, `-c` column selection, `-h` help, timing/bandwidth
+  reporting, NUL-padding trim, compiled-out `profilingEnabled`
+  instrumentation
 
 | `src/main/java/MetadataParquetWriter.java`
 | `finalizeWrite()` so footer metadata can be added during writing,

@@ -131,6 +131,8 @@ public class LogToParquet
       }
       System.out.println();
 
+      for (File f : logFiles) checkNotEmpty(f);
+
       try
       {
         convertAll(logFiles, outputPath, schema, progress);
@@ -144,6 +146,8 @@ public class LogToParquet
     {
       String inputPath = rest[0];
       String outputPath = rest[1];
+
+      checkNotEmpty(new File(inputPath));
 
       long blockSize = detectBlockSize(inputPath);
       System.out.println("Block size: " + blockSize/1024 + " KB");
@@ -252,6 +256,20 @@ public class LogToParquet
     out.append(line).append('\n');
 
     return out.toString();
+  }
+
+  /**
+     An empty log means the run produced nothing, so there is no
+     conversion to do.  Catch it up front rather than letting
+     block-size detection return 0 and the read loop quietly write an
+     empty Parquet that looks like a successful result.
+  */
+  private static void checkNotEmpty(File logFile)
+  {
+    if (logFile.length() != 0) return;
+
+    System.err.println("Error: empty log file: " + logFile.getPath());
+    System.exit(1);
   }
 
   /**

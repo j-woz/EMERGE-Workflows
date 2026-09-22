@@ -5,19 +5,58 @@ THIS=${0:h:A}
 source $THIS/../common/tools.zsh
 
 zparseopts -D -E n=N
-args BLOCK_KB LOG - ${*}
 
-if [[ ! -f $LOG ]] {
+# ARGS() takes a fixed argument count, but the log list is variable,
+# so pull off the one fixed argument and keep the rest.
+args BLOCK_KB - ${1-}
+shift
+
+# The remaining arguments are the logs: one results.log for an older
+# run, or several results-NNNNNN.log for a run that split its output
+# across streams.  Their blocks are summed: they are one run.
+LOGS=( ${*} )
+
+if (( ${#LOGS} == 0 )) {
   if (( ${#N} )) {
     print "No results.log"
     return
   } else {
-    abort "No LOG=$LOG"
+    abort "No logs given"
   }
 }
 
 zmodload zsh/stat
-zstat +size -A SIZE $LOG
 
-if (( $SIZE % (BLOCK_KB*1024) != 0 )) abort "Funny size: $SIZE"
-print "BLOCKS:" $[ $SIZE / (BLOCK_KB*1024) ]
+TOTAL=0
+BAD=""
+for LOG in ${LOGS}
+do
+  if [[ ! -f $LOG ]] {
+    if (( ${#N} )) {
+      print "No results.log"
+      return
+    } else {
+      abort "No LOG=$LOG"
+    }
+  }
+
+  zstat +size -A SIZE $LOG
+  BLOCKS=$[ $SIZE / (BLOCK_KB*1024) ]
+
+  # With one log the per-log line would just repeat the total
+  if (( ${#LOGS} > 1 )) printf "  %-24s %d\n" ${LOG:t} $BLOCKS
+
+  TOTAL=$[ TOTAL + BLOCKS ]
+
+  # A partial block means the run was killed mid-record.  Stop here:
+  # any later log is from the same dead run and its count would only
+  # mislead.  Report the total first, then fail.
+  if (( $SIZE % (BLOCK_KB*1024) != 0 )) {
+    BAD="Funny size: $SIZE in ${LOG:t}"
+    break
+  }
+done
+
+print "BLOCKS:" $TOTAL
+
+if (( ${#BAD} )) abort $BAD
