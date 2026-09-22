@@ -1,5 +1,6 @@
 #!/bin/zsh
 set -eu
+setopt NULL_GLOB
 
 THIS=${0:h:A}
 source $THIS/../common/tools.zsh
@@ -17,7 +18,13 @@ print
 
 grep "NODES" $DIR/turbine.log | tail -1
 
-$THIS/log-size $N 64 $DIR
+# A run writes either one results.log or, with multiple output
+# streams, several results-NNNNNN.log .  Pass whatever is there:
+# NULL_GLOB so that no logs at all yields an empty list, which
+# log-size reports on, rather than a literal unmatched pattern.
+LOGS=( $DIR/results*.log )
+
+$THIS/log-size $N 64 $LOGS
 
 if (( ${#N} )) {
   print "AMReX finalized"
