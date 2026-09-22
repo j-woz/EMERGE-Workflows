@@ -38,5 +38,9 @@ A=(
   ~/E/wozniak/EE-outs/out-1B-$JOBNAME
 )
 
-set -x
-$THIS/loop-replicates-aurora.sh $A
+(
+  set -x
+  $THIS/loop-replicates-aurora.sh $A
+)
+
+print "SUBMITTED JOB: $TURBINE_JOBNAME"
