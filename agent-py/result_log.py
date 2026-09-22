@@ -15,6 +15,13 @@ BLOCK_SIZE = 64 * 1024
 WRITE_BUFFER_SIZE = 256 * BLOCK_SIZE
 
 fp_write = None
+VERBOSE = False
+
+
+try:
+    rank_self = int(getenv("ADLB_RANK_SELF"))
+except:
+    rank_self = -1000
 
 
 def main():
@@ -161,11 +168,9 @@ def write_values(filename, envs, kvs):
 
 
 def do_open_write(filename):
-    global fp_write
-    rank = int(getenv("ADLB_RANK_SELF"))
-    filename = f"{filename}-{rank:06d}.log"
-    print("result_log: open: rank=%i '%s'" % (rank, filename),
-          flush=True)
+    global fp_write, rank_self
+    filename = f"{filename}-{rank_self:06d}.log"
+    verbose("open: '%s'" % filename)
     fp_write = open(filename, "wb", buffering=WRITE_BUFFER_SIZE)
 
 
@@ -188,7 +193,7 @@ def do_write(filename, record):
         B[:len(record)] = record.encode("utf-8")
         fp_write.write(B)
     except Exception as e:
-        print("", flush=True)
+        print("")
         print("result_log.do_write(): EXCEPTION: filename=" + filename)
         print("result_log.do_write(): " + str(e))
         print("", flush=True)
@@ -210,8 +215,7 @@ def do_close_auto():
     """
     global fp_write
     if fp_write is None: return
-    rank = int(getenv("ADLB_RANK_SELF"))
-    print("result_log: atexit: close: rank=%i" % rank, flush=True)
+    verbose("atexit: close.")
     do_close()
 
 
@@ -234,5 +238,9 @@ def extract(filename, idx):
     return B.rstrip(b"\x00").decode("utf-8")
 
 
-if __name__ == "__main__":
-    main()
+def verbose(msg):
+    if VERBOSE:
+        print("%3i " % rank_self + "result_log: " + msg, flush=True)
+
+
+if __name__ == "__main__": main()
