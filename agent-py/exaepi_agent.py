@@ -42,6 +42,27 @@ def get_installation():
     return result
 
 
+def which_agent():
+    print("which_agent() ... ", flush=True)
+
+    cmd = ["/usr/bin/which", "agent"]
+    verbose("cmd: " + str(cmd))
+
+    child = subprocess.run(cmd,
+                           stdout = subprocess.PIPE,
+                           text   = True)
+    if child.returncode != 0:
+        print("exaepi_agent.which_agent(): " +
+              "exit code from which: %i" % child.returncode,
+              flush=True)
+        print(child.stdout)
+        exit(1)
+
+    result = child.stdout.strip()
+    print("which_agent(): " + result, flush=True)
+    return result
+
+
 def get_version():
     """
     Get the ExaEpi version string
@@ -78,27 +99,6 @@ def get_version():
         #    for user inspection (without NLs!)
         result = s.replace('\n', ' ')
 
-    return result
-
-
-def which_agent():
-    print("which_agent() ... ", flush=True)
-
-    cmd = ["/usr/bin/which", "agent"]
-    verbose("cmd: " + str(cmd))
-
-    child = subprocess.run(cmd,
-                           stdout = subprocess.PIPE,
-                           text   = True)
-    if child.returncode != 0:
-        print("exaepi_agent.which_agent(): " +
-              "exit code from which: %i" % child.returncode,
-              flush=True)
-        print(child.stdout)
-        exit(1)
-
-    result = child.stdout.strip()
-    print("which_agent(): " + result, flush=True)
     return result
 
 
