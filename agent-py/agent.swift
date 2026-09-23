@@ -32,6 +32,7 @@ agent_dict(int idx, string input_cfg,
 
 /**
    task_id: A unique ID to identify this task
+   result:  A JSON string
 */
 (string result)
 agent_csv_lines(int task_id, string input_cfg,

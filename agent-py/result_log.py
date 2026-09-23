@@ -175,6 +175,9 @@ def do_open_write(filename):
 
 
 def do_write(filename, record):
+    """
+    record: plain string to write to file, will be padded here
+    """
     import time, traceback
 
     if len(record) > BLOCK_SIZE:
