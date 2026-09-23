@@ -1,5 +1,7 @@
 # Maven libraries directory:
 .m2
+# Python
+__pycache__
 # log2pqt installation:
 target
 # Params inputs
