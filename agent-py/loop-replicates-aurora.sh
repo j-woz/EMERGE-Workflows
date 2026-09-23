@@ -9,7 +9,7 @@ THIS=${0:h:A}
 source $THIS/../common/tools.zsh
 
 args TEMPLATE_ORIGIN POP_BIN_ORIGIN CASES_ORIGIN PARAMS_CSV_ORIGIN \
-     OUTPUT_DIR REPLICATES SEED_INIT - ${*}
+     REPLICATES SEED_INIT OUTPUT_DIR - ${*}
 
 # Convert user arguments to Absolute paths:
 export TEMPLATE_ORIGIN=${TEMPLATE_ORIGIN:A}
@@ -71,7 +71,6 @@ WORKFLOW_ARGS=(
   $TURBINE_OUTPUT/results
   --replicates=$REPLICATES
   --seed_init=$SEED_INIT
-  --streams=2
 )
 
 set -x
