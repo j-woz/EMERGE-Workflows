@@ -1,6 +1,9 @@
 #!/bin/zsh
 set -eu
 
+# HEAD PARAMS
+# Extract the first N rows from given data SET to OUTPUT
+
 THIS=${0:h:A}
 source $THIS/../common/tools.zsh
 
@@ -13,6 +16,7 @@ exists ${SET}_params.csv
 OUTPUT=${SET}_params_$N.csv
 head -$[N+1] ${SET}_params.csv > $OUTPUT
 
+# Report size of OUTPUT produced:
 {
   printf "lines "
   wc -l < $OUTPUT
