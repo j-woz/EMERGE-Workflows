@@ -1,0 +1,25 @@
+#!/bin/zsh
+set -eu
+
+# Globus names:
+NERSC=9d6d994a-6d04-11e5-ba46-22000b92c6ec
+SALTELLI="$NERSC:/global/cfs/cdirs/m5071/gsharing/Saltelli"
+FLARE=f39a7a0f-5bfc-46ce-9615-ba9f8592814f
+EE_OUTS=$FLARE:/EpiCalib/wozniak/EE-outs
+
+cd $1
+PARQUETS=( results-*.parquet )
+if (( ${#PARQUETS} != 1 )) {
+  print "Bad Parquet count: ${#PARQUET} in $PWD"
+  return 1
+}
+
+PARQUET=${PARQUETS[1]}
+
+D=${PWD:t}
+
+# Globus path:
+PQT_PATH=$EE_OUTS/$D/$PARQUET
+
+globus transfer $PQT_PATH $SALTELLI/$PARQUET
+print

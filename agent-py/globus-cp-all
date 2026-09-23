@@ -1,0 +1,42 @@
+#!/bin/zsh
+set -eu
+
+THIS=${0:h:A}
+source $THIS/../common/tools.zsh
+
+NERSC=9d6d994a-6d04-11e5-ba46-22000b92c6ec
+SALTELLI="$NERSC:/global/cfs/cdirs/m5071/gsharing/Saltelli"
+
+FLARE=f39a7a0f-5bfc-46ce-9615-ba9f8592814f
+EE_OUTS=$FLARE:/EpiCalib/wozniak/EE-outs
+
+DIRS=( ${*} )
+printf "DIRS:     %2i\n" ${#DIRS}
+
+COMPLETE=( $( globus ls $SALTELLI ) )
+print "COMPLETE: ${#COMPLETE}"
+
+for DIR in $DIRS
+do
+  if [[ ! -d ${DIR} ]] abort "No DIR: $DIR"
+
+  PQTS=( ${DIR}/results-*.parquet )
+  if (( ${#PQTS} != 1 )) abort "Bad Parquet count: ${#PQTS} in $DIR"
+
+  PQT=${PQTS[1]}
+  F=${PQT:t}
+
+  # ZSH array index lookup on F in COMPLETE:
+  if (( ${COMPLETE[(i)${F}]} <= ${#COMPLETE} )) {
+    print "Skip:    $DIR $PQT"
+    continue
+  }
+
+  print
+  print "XFER:    $DIR"
+  if ! globus-cp-1 $DIR
+  then
+    abort "ERROR in: $DIR"
+    return 1
+  fi
+done
