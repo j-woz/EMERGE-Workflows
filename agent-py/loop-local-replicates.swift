@@ -20,12 +20,10 @@ import agent;
 
 import csv_get;
 
-arguments(description         : "Run ExaEpi w/ multiple streams",
-          string result_file  : "Final output result log prefix",
-          string params_csv   : "CSV of parameters to run");
+arguments(input  params_csv   : "CSV of parameters to run",
+          string result_file  : "Final output result log");
 flags(int replicates=1  : "Number of iterations per CSV line",
-      int seed_init=0   : "Replicate seed for start",
-      int streams=1     : "Number of output streams");
+      int seed_init=0   : "Replicate seed for start");
 
 input_dir    = getenv("INPUT_DIR");
 template_cfg = input_dir / "template.cfg";
@@ -34,13 +32,12 @@ cases_data   = input_dir / "cases.data";
 
 assert(turbine_workers() >= 3, "need at least 3 workers!");
 
+// RL: The location for the Result Log:
+location RL = locationFromRank(turbine_workers()-1);
+
 (void v)
 result_log_vars(string filename, string envs, string kvs)
 {
-  // This record always goes into the 0th result log.
-  // RL: The location for the Result Log:
-  location RL = locationFromRank(turbine_workers() - streams - 1);
-
   // Writes a arbitrary data to the log
   t =
   @location=RL
@@ -50,13 +47,8 @@ result_log_vars(string filename, string envs, string kvs)
   v = propagate(t);
 }
 
-result_log_write(int task_id, string filename, string record)
+result_log_write(string filename, string record)
 {
-  // RL: The location for the Result Log:
-  int file_id = task_id %% streams;
-  int rank = turbine_workers() - streams + file_id - 1;
-  location RL = locationFromRank(rank);
-
   // Writes a simulation record to the log
   // Need triple-quote: record strings contain NLs
   if (find(getenv("OPTZ_IO"), "O", 0, -1) >= 0 ) {
@@ -67,14 +59,14 @@ result_log_write(int task_id, string filename, string record)
   }
 }
 
-printf("params_csv: " + params_csv);
+printf("params_csv: " + filename(params_csv));
 
 // CSV_GET: The rank for the csv_get operations
 location CSV_GET = locationFromRank(turbine_workers()-2);
 
 (int r)
 run_recursive(string template_cfg, string pop_bin, string cases_data,
-              string params_csv, location CSV_GET, int level)
+              file params_csv, location CSV_GET, int level)
 {
   string csv_lines = csv_get1(params_csv, CSV_GET);
   // printf("csv_lines: " + csv_lines);
@@ -104,7 +96,7 @@ run_replicates(string template_cfg, string pop_bin, string cases_data,
     result = agent_csv_lines(task_id, template_cfg,
                              pop_bin, cases_data, seed, csv_lines);
     // printf("result: '%s'", result);
-    result_log_write(task_id, result_file, result);
+    result_log_write(result_file, result);
     A[seed] = bool2int(strlen(result) > 0);
   }
   r = sum_integer(A);
@@ -125,7 +117,7 @@ kv_array = [
                "header=true",
                "date="           + time_string,
                "template="       + realpath_string(template_cfg),
-               "params_csv="     + realpath_string(params_csv),
+               "params_csv="     + filename(realpath(params_csv)),
                "urbanpop="       + realpath_string(pop_bin),
                "cases="          + realpath_string(cases_data),
                "replicates=%i"   % replicates,
