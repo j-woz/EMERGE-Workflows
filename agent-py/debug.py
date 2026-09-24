@@ -10,4 +10,6 @@ def report_tmp(idx):
     rank = int(os.getenv("ADLB_RANK_SELF"))
     work_dir = f"/tmp/{user}/exaepi"
     files = os.listdir(work_dir)
-    print("%3i: %3i: %s" % (rank, idx, str(files)))
+    print("rank %3i: idx %3i: %s" % (rank, idx, str(files)), flush=True)
+    # Return a string to Swift/T:
+    return str(True)

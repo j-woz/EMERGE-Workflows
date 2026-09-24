@@ -15,6 +15,7 @@ flush stdout
 after 2000
 
 # If I am rank=0, construct the list of files to copy
+# The wrapper shell scripts copy the files to standardized names:
 set EMERGE_WF  $env(HOME)/proj/EMERGE-WF
 set file_tmplt $env(TURBINE_OUTPUT)/template.cfg
 set file_cases $env(TURBINE_OUTPUT)/cases.data
@@ -32,8 +33,8 @@ if { $rank == 0 } {
 turbine::c::bcast $comm 0 files
 
 # Make a node-local data directory
-set LOCAL_PREFIX /tmp/$env(USER)/exaepi
-file mkdir $LOCAL_PREFIX
+set LOCAL_DIR $env(LOCAL_DIR)
+file mkdir $LOCAL_DIR
 
 # Copy each file to the node-local directory
 foreach f $files {
@@ -41,7 +42,7 @@ foreach f $files {
     puts "copying: $f"
     flush stdout
   }
-  turbine::c::copy_to $comm $f $LOCAL_PREFIX
+  turbine::c::copy_to $comm $f $LOCAL_DIR
   if { $rank == 0 } {
     puts "copy ok."
     flush stdout

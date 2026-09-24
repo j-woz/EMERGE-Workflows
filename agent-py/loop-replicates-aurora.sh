@@ -33,19 +33,7 @@ export OPTZ_IO=${OPTZ_IO:-IO}
 export LOCAL_DIR=/tmp/$USER/exaepi
 export AGENT_ORIGIN==agent
 
-# Stage data
-mkdir -pv $TURBINE_OUTPUT
-cp -uv $TEMPLATE_ORIGIN $TEMPLATE_CFG
-cp -uv $POP_BIN_ORIGIN  $POP_BIN
-cp -uv $CASES_ORIGIN    $CASES_DATA
-cp -uv $AGENT_ORIGIN $THIS/affinity.sh $TURBINE_OUTPUT
-bak $TURBINE_OUTPUT/data-origins.txt
-{
-  # Record original data locations for provenance
-  msg "DATA ORIGINS"
-  show AGENT_ORIGIN TEMPLATE_ORIGIN POP_BIN_ORIGIN CASES_ORIGIN \
-       OPTZ_IO
-} > $TURBINE_OUTPUT/data-origins.txt
+source $THIS/stage-data.sh
 
 if [[ $OPTZ_IO == *I* ]] {
   export INPUT_DIR=$LOCAL_DIR
